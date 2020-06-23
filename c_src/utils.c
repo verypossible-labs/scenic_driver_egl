@@ -6,7 +6,8 @@
 Functions to load fonts and render text
 */
 
-#include <GL/glew.h>
+#define GLFW_INCLUDE_ES2
+#define GLFW_INCLUDE_GLEXT
 #include <GLFW/glfw3.h>
 #include <stdio.h>
 #include <string.h>
@@ -41,10 +42,10 @@ void check_gl_error(char* msg)
       case GL_OUT_OF_MEMORY:
         strncat(buff, " GL_OUT_OF_MEMORY", 399);
         break;
-      case GL_STACK_UNDERFLOW:
+      case GL_STACK_UNDERFLOW_KHR:
         strncat(buff, " GL_STACK_UNDERFLOW", 399);
         break;
-      case GL_STACK_OVERFLOW:
+      case GL_STACK_OVERFLOW_KHR:
         strncat(buff, " GL_STACK_OVERFLOW", 399);
         break;
       case GL_INVALID_FRAMEBUFFER_OPERATION:

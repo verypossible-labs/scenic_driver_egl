@@ -13,6 +13,8 @@ Functions to load textures onto the graphics card
 #include "comms.h"
 #include "nanovg/nanovg.h"
 #include "types.h"
+#define GLFW_INCLUDE_ES2
+#define GLFW_INCLUDE_GLEXT
 #include <GLFW/glfw3.h>
 
 #include "uthash.h"

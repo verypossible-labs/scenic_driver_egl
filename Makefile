@@ -15,8 +15,8 @@ ifeq ($(MIX_ENV),dev)
 	CFLAGS += -g
 endif
 
-LDFLAGS += `pkg-config --static --libs glfw3 glew`
-CFLAGS += `pkg-config --static --cflags glfw3 glew`
+LDFLAGS += `pkg-config --static --libs glfw3`
+CFLAGS += `pkg-config --static --cflags glfw3`
 
 
 ifneq ($(OS),Windows_NT)
@@ -25,7 +25,7 @@ ifneq ($(OS),Windows_NT)
 	ifeq ($(shell uname),Darwin)
 		LDFLAGS += -framework Cocoa -framework OpenGL -Wno-deprecated
 	else
-	  LDFLAGS += -lGL -lm -lrt
+	  LDFLAGS += -lGLESv2 -lm -lrt
 	endif
 endif
 

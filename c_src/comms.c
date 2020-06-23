@@ -7,6 +7,8 @@ Functions to facilitate messages coming up or down from the all via stdin
 The caller will typically be erlang, so use the 2-byte length indicator
 */
 
+#define GLFW_INCLUDE_ES2
+#define GLFW_INCLUDE_GLEXT
 #include <GLFW/glfw3.h>
 #include <stdio.h>
 #include <stdlib.h>

@@ -8,6 +8,8 @@ functions to play a compiled render script
 #include <math.h>
 #include <stdio.h>
 
+#define GLFW_INCLUDE_ES2
+#define GLFW_INCLUDE_GLEXT
 #include <GLFW/glfw3.h>
 #include <stdlib.h>
 

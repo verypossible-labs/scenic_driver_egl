@@ -6,7 +6,8 @@
 Functions to load textures onto the graphics card
 */
 
-#include <GL/glew.h>
+#define GLFW_INCLUDE_ES2
+#define GLFW_INCLUDE_GLEXT
 #include <GLFW/glfw3.h>
 #include <stdlib.h> // malloc
 
@@ -101,11 +102,8 @@ void receive_put_tx_file(int* p_msg_length, GLFWwindow* window)
   glTexImage2D(GL_TEXTURE_2D, 0, format, x, y, 0, format, GL_UNSIGNED_BYTE,
                p_img);
 
-  if (p_window_data->context.glew_ok)
-  {
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, log2(x));
-    glGenerateMipmap(GL_TEXTURE_2D);
-  }
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, log2(x));
+  glGenerateMipmap(GL_TEXTURE_2D);
 
   glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -178,11 +176,8 @@ void receive_put_tx_raw(int* p_msg_length, GLFWwindow* window)
   glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format,
                GL_UNSIGNED_BYTE, p_tx_pixels);
 
-  if (p_window_data->context.glew_ok)
-  {
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, log2(width));
-    glGenerateMipmap(GL_TEXTURE_2D);
-  }
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, log2(width));
+  glGenerateMipmap(GL_TEXTURE_2D);
 
   glBindTexture(GL_TEXTURE_2D, 0);
 

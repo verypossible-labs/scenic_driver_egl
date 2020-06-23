@@ -17,8 +17,8 @@ The design of Scenic goes to great lengths to minimize its dependencies to just
 the minimum. Namely, it needs Erlang/Elixir and OpenGL.
 
 Rendering your application into a window on your local computer (MacOS, Ubuntu
-and others) is done by the `scenic_driver_glfw` driver. It uses the GLFW and
-GLEW libraries to connect to OpenGL.
+and others) is done by the `scenic_driver_glfw` driver. It uses the GLFW to
+connect to OpenGL.
 
 The instructions below assume you have already installed Elixir/Erlang. If you
 need to install Elixir/Erlang there are instructions on the [elixir-lang

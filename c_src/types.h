@@ -35,7 +35,6 @@ typedef struct
   int         frame_height;
   Vector2f    frame_ratio;
   NVGcontext* p_ctx;
-  bool        glew_ok;
   void*       p_fonts;
 } context_t;
 

@@ -11,6 +11,8 @@
 #include <stdbool.h>
 #endif
 
+#define GLFW_INCLUDE_ES2
+#define GLFW_INCLUDE_GLEXT
 #include <GLFW/glfw3.h>
 
 bool read_bytes_down(void* p_buff, int bytes_to_read,

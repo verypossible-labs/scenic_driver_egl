@@ -10,10 +10,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <GL/glew.h>
+#define GLFW_INCLUDE_ES2
+#define GLFW_INCLUDE_GLEXT
 #include <GLFW/glfw3.h>
 
-#define NANOVG_GL2_IMPLEMENTATION
+#define NANOVG_GLES2_IMPLEMENTATION
 #include "nanovg/nanovg.h"
 #include "nanovg/nanovg_gl.h"
 
@@ -205,15 +206,10 @@ void setup_window(GLFWwindow* window, int width, int height, int num_scripts)
   p_data->context.frame_ratio.x = 1.0f;
   p_data->context.frame_ratio.y = 1.0f;
 
-  p_data->context.glew_ok = false;
-
   glfwSetWindowUserPointer(window, p_data);
 
   // Make the window's context current
   glfwMakeContextCurrent(window);
-
-  // initialize glew - do after setting up window and making current
-  p_data->context.glew_ok = glewInit() == GLEW_OK;
 
   // get the actual framebuffer size to set it up
   int frame_width, frame_height;
@@ -226,7 +222,7 @@ void setup_window(GLFWwindow* window, int width, int height, int num_scripts)
   reshape_window(window, window_width, window_height);
 
   p_data->context.p_ctx =
-      nvgCreateGL2(NVG_ANTIALIAS | NVG_STENCIL_STROKES | NVG_DEBUG);
+      nvgCreateGLES2(NVG_ANTIALIAS | NVG_STENCIL_STROKES | NVG_DEBUG);
   if (p_data->context.p_ctx == NULL)
   {
     send_puts("Could not init nanovg!!!");
