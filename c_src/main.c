@@ -174,12 +174,16 @@ void set_window_hints(const char* resizable)
     glfwWindowHint(GLFW_RESIZABLE, false);
   }
 
-  // claim the focus right on creation
-  glfwWindowHint(GLFW_FOCUSED, true);
+  glfwWindowHint(GLFW_MAXIMIZED, true);
 
-  // we want OpenGL 2.1
+  glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+  glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+  glfwWindowHint(GLFW_RED_BITS, 5);
+  glfwWindowHint(GLFW_GREEN_BITS, 6);
+  glfwWindowHint(GLFW_BLUE_BITS, 5);
+  glfwWindowHint(GLFW_REFRESH_RATE, GLFW_DONT_CARE);
 }
 
 //---------------------------------------------------------
@@ -310,11 +314,11 @@ int main(int argc, char** argv)
 
   // set the glfw window hints - done before window creation
   // argv[4] is the resizable flag
-  set_window_hints(argv[4]);
+   set_window_hints(argv[4]);
 
   /* Create a windowed mode window and its OpenGL context */
   // argv[3] is the window title
-  window = glfwCreateWindow(width, height, argv[3], NULL, NULL);
+  window = glfwCreateWindow(width, height, argv[3], glfwGetPrimaryMonitor(), NULL);
   if (!window)
   {
     glfwTerminate();
@@ -359,7 +363,8 @@ int main(int argc, char** argv)
     }
 
     // poll for events and return immediately
-    glfwPollEvents();
+    // TODO: This is causing the application to crash on Beaglebone
+    //glfwPollEvents();
   }
 
   // clean up

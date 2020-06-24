@@ -845,8 +845,9 @@ bool handle_stdio_in(GLFWwindow* window)
     tv.tv_usec = time_remaining;
 
     int len = read_msg_length(&tv);
-    if (len <= 0)
+    if (len <= 0) {
       break;
+    }
 
     // process the message
     redraw = dispatch_message(len, window) || redraw;
