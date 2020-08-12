@@ -19,13 +19,6 @@ erl_crash.dump
 # Also ignore archive artifacts (built via "mix archive.build").
 *.ez
 
-# Ignore package tarball (built via "mix hex.build").
-scenic_driver_mac-*.tar
-
-priv/dev
-priv/test
-priv/prod
-
 .DS_Store
 
 *.log

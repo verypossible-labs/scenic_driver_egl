@@ -7,14 +7,16 @@ Functions to facilitate messages coming up or down from the all via stdin
 The caller will typically be erlang, so use the 2-byte length indicator
 */
 
-#define GLFW_INCLUDE_ES2
-#define GLFW_INCLUDE_GLEXT
-#include <GLFW/glfw3.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
 #include <unistd.h>
+// #include <pthread.h>
+
+#include <GLES2/gl2.h>
+// #include <GLES2/gl2ext.h>
 
 #include <sys/select.h>
 
@@ -45,6 +47,7 @@ The caller will typically be erlang, so use the 2-byte length indicator
 
 #define MSG_OUT_FONT_MISS 0x22
 
+// #define   MSG_OUT_NEW_DL_ID         0x30
 #define MSG_OUT_NEW_TX_ID 0x31
 #define MSG_OUT_NEW_FONT_ID 0x32
 
@@ -53,6 +56,9 @@ The caller will typically be erlang, so use the 2-byte length indicator
 #define CMD_SET_ROOT 0x03
 
 #define CMD_CLEAR_COLOR 0x05
+
+// #define   CMD_CACHE_LOAD            0x03
+// #define   CMD_CACHE_RELEASE         0x04
 
 #define CMD_INPUT 0x0A
 
@@ -66,6 +72,9 @@ The caller will typically be erlang, so use the 2-byte length indicator
 #define CMD_RESTORE 0x27
 #define CMD_SHOW 0x28
 #define CMD_HIDE 0x29
+
+// #define   CMD_NEW_DL_ID             0x30
+// #define   CMD_FREE_DL_ID            0x31
 
 #define CMD_NEW_TX_ID 0x32
 #define CMD_FREE_TX_ID 0x33
@@ -100,6 +109,8 @@ The caller will typically be erlang, so use the 2-byte length indicator
    ((x) << 24))
 
 static bool f_little_endian;
+
+// pthread_rwlock_t comms_out_lock = PTHREAD_RWLOCK_INITIALIZER;
 
 //=============================================================================
 // raw comms with host app
@@ -149,13 +160,16 @@ int write_cmd(byte* buf, unsigned int len)
   int written = 0;
 
   // since this can be called from both the main and comms thread, need to
-  // synchronize it
-  // if ( pthread_rwlock_wrlock(&comms_out_lock) == 0 ) {
+  // synchronize it if ( pthread_rwlock_wrlock(&comms_out_lock) == 0 ) {
   uint32_t len_big = len;
   if (f_little_endian)
     len_big = SWAP_UINT32(len_big);
   write_exact((byte*) &len_big, sizeof(uint32_t));
   written = write_exact(buf, len);
+
+  // unlock writing out
+  //   pthread_rwlock_unlock( &comms_out_lock );
+  // }
 
   return written;
 }
@@ -204,7 +218,7 @@ int read_msg_length(struct timeval* ptv)
 //---------------------------------------------------------
 bool read_bytes_down(void* p_buff, int bytes_to_read, int* p_bytes_to_remaining)
 {
-  if (p_bytes_to_remaining <= 0)
+  if (!p_bytes_to_remaining)
     return false;
   if (bytes_to_read > *p_bytes_to_remaining)
   {
@@ -318,24 +332,6 @@ void send_font_miss(const char* key)
 typedef struct __attribute__((__packed__))
 {
   uint32_t msg_id;
-  uint32_t window_width;
-  uint32_t window_height;
-  uint32_t frame_width;
-  uint32_t frame_height;
-} msg_reshape_t;
-
-void send_reshape(int window_width, int window_height, int frame_width,
-                  int frame_height)
-{
-  msg_reshape_t msg = {MSG_OUT_RESHAPE, window_width, window_height,
-                       frame_width, frame_height};
-  write_cmd((byte*) &msg, sizeof(msg_reshape_t));
-}
-
-//---------------------------------------------------------
-typedef struct __attribute__((__packed__))
-{
-  uint32_t msg_id;
   uint32_t key;
   uint32_t scancode;
   uint32_t action;
@@ -437,10 +433,12 @@ typedef struct __attribute__((__packed__))
 {
   uint32_t msg_id;
   int32_t  empty_dl;
+  int32_t  width;
+  int32_t  height;
 } msg_ready_t;
-void send_ready(int root_id)
+void send_ready(int root_id, int width, int height)
 {
-  msg_ready_t msg = {MSG_OUT_READY, root_id};
+  msg_ready_t msg = {MSG_OUT_READY, root_id, width, height};
   write_cmd((byte*) &msg, sizeof(msg_ready_t));
 }
 
@@ -453,7 +451,7 @@ typedef struct __attribute__((__packed__))
 
 void send_draw_ready(unsigned int id)
 {
-  msg_ready_t msg = {MSG_OUT_DRAW_READY, id};
+  msg_draw_ready_t msg = {MSG_OUT_DRAW_READY, id};
   write_cmd((byte*) &msg, sizeof(msg_draw_ready_t));
 }
 
@@ -465,86 +463,43 @@ typedef struct __attribute__((__packed__))
 {
   uint32_t msg_id;
   uint32_t input_flags;
-  int      xpos;
-  int      ypos;
-  int      width;
-  int      height;
-  bool     focused;
-  bool     resizable;
-  bool     iconified;
-  bool     maximized;
-  bool     visible;
+  int32_t  xpos;
+  int32_t  ypos;
+  int32_t  width;
+  int32_t  height;
 } msg_stats_t;
-void receive_query_stats(GLFWwindow* window)
+void receive_query_stats(driver_data_t* p_data)
 {
-  msg_stats_t    msg;
-  int            a, b;
-  window_data_t* p_window_data = glfwGetWindowUserPointer(window);
+  msg_stats_t msg;
 
-  msg.msg_id      = MSG_OUT_STATS;
-  msg.input_flags = p_window_data->input_flags;
-
-  // can't point into packed structure...
-  glfwGetWindowPos(window, &a, &b);
-  msg.xpos = a;
-  msg.ypos = b;
+  msg.msg_id = MSG_OUT_STATS;
+  // msg.input_flags = p_data->input_flags;
+  msg.input_flags = 0;
 
   // can't point into packed structure...
-  glfwGetWindowSize(window, &a, &b);
-  msg.width  = a;
-  msg.height = b;
+  // glfwGetWindowPos(window, &a, &b);
+  msg.xpos = 0;
+  msg.ypos = 0;
 
-  msg.focused   = glfwGetWindowAttrib(window, GLFW_FOCUSED);
-  msg.resizable = glfwGetWindowAttrib(window, GLFW_RESIZABLE);
-  msg.iconified = glfwGetWindowAttrib(window, GLFW_ICONIFIED);
-  msg.maximized = false;
-  msg.visible   = glfwGetWindowAttrib(window, GLFW_VISIBLE);
+  // can't point into packed structure...
+  msg.width  = p_data->screen_width;
+  msg.height = p_data->screen_height;
 
   write_cmd((byte*) &msg, sizeof(msg_stats_t));
 }
 
-//---------------------------------------------------------
-void receive_input(int* p_msg_length, GLFWwindow* window)
-{
-  window_data_t* p_window_data = glfwGetWindowUserPointer(window);
-  read_bytes_down(&p_window_data->input_flags, sizeof(uint32_t), p_msg_length);
-}
+// //---------------------------------------------------------
+// void receive_input( int* p_msg_length, GLFWwindow* window ) {
+//   window_data_t*  p_window_data = glfwGetWindowUserPointer( window );
+//   read_bytes_down( &p_window_data->input_flags, sizeof(uint32_t),
+//   p_msg_length);
+// }
 
 //---------------------------------------------------------
-typedef struct __attribute__((__packed__))
-{
-  int32_t x_w;
-  int32_t y_h;
-} cmd_move_t;
-void receive_reshape(int* p_msg_length, GLFWwindow* window)
-{
-  cmd_move_t move_data;
-  if (read_bytes_down(&move_data, sizeof(cmd_move_t), p_msg_length))
-  {
-    // act on the data
-    glfwSetWindowSize(window, move_data.x_w, move_data.y_h);
-  }
-}
-
-//---------------------------------------------------------
-void receive_position(int* p_msg_length, GLFWwindow* window)
-{
-  cmd_move_t move_data;
-  if (read_bytes_down(&move_data, sizeof(cmd_move_t), p_msg_length))
-  {
-    // act on the data
-    glfwSetWindowPos(window, move_data.x_w, move_data.y_h);
-  }
-}
-
-//---------------------------------------------------------
-void receive_quit(GLFWwindow* window)
+void receive_quit(driver_data_t* p_data)
 {
   // clear the keep_going control flag, this ends the main thread loop
-  window_data_t* p_window_data = glfwGetWindowUserPointer(window);
-  p_window_data->keep_going    = false;
-  // post an empty window event to trigger immediate quitting
-  glfwPostEmptyEvent();
+  p_data->keep_going = false;
 }
 
 //---------------------------------------------------------
@@ -555,14 +510,8 @@ void receive_crash()
 }
 
 //---------------------------------------------------------
-void receive_render(int* p_msg_length, GLFWwindow* window)
+void receive_render(int* p_msg_length, driver_data_t* p_data)
 {
-  window_data_t* p_data = glfwGetWindowUserPointer(window);
-  if (p_data == NULL)
-  {
-    send_puts("receive_set_graph BAD WINDOW");
-    return;
-  }
 
   // get the draw list id to compile
   GLuint id;
@@ -572,53 +521,54 @@ void receive_render(int* p_msg_length, GLFWwindow* window)
   void* p_script = malloc(*p_msg_length);
   read_bytes_down(p_script, *p_msg_length, p_msg_length);
 
+  // char buff[200];
+  // sprintf(buff, "receive_render %d", id);
+  // send_puts( buff );
+
   // save the script away for later
   put_script(p_data, id, p_script);
 
+  // render the graph
+  //  if ( pthread_rwlock_wrlock(&p_data->context.gl_lock) == 0 ) {
+  // render( p_msg_length, p_data );
+  //    pthread_rwlock_unlock(&p_data->context.gl_lock);
+  //  }
+
   // send the signal that drawing is done
   send_draw_ready(id);
-
-  // post a message to kick the display loop
-  glfwPostEmptyEvent();
 }
 
 //---------------------------------------------------------
-void receive_clear(int* p_msg_length, GLFWwindow* window)
+void receive_clear(int* p_msg_length, driver_data_t* p_data)
 {
-  window_data_t* p_data = glfwGetWindowUserPointer(window);
-  if (p_data == NULL)
-  {
-    send_puts("receive_set_graph BAD WINDOW");
-    return;
-  }
 
   // get and validate the dl_id
   GLuint id;
   read_bytes_down(&id, sizeof(GLuint), p_msg_length);
 
+  // char buff[200];
+  // sprintf(buff, "delete_render %d", id);
+  // send_puts( buff );
+
   // delete the list
   delete_script(p_data, id);
+
+  // post a message to kick the display loop
+  // glfwPostEmptyEvent();
 }
 
 //---------------------------------------------------------
-void receive_set_root(int* p_msg_length, GLFWwindow* window)
+void receive_set_root(int* p_msg_length, driver_data_t* p_data)
 {
-  window_data_t* p_data = glfwGetWindowUserPointer(window);
-  if (p_data == NULL)
-  {
-    send_puts("receive_set_graph BAD WINDOW");
-    return;
-  }
-
   // get and validate the dl_id
   GLint id;
   read_bytes_down(&id, sizeof(GLint), p_msg_length);
 
   // update the current_dl with the incoming id
+  //  if ( pthread_rwlock_wrlock(&p_data->context.gl_lock) == 0 ) {
   p_data->root_script = id;
-
-  // post a message to kick the display loop
-  glfwPostEmptyEvent();
+  //    pthread_rwlock_unlock(&p_data->context.gl_lock);
+  //  }
 }
 
 //---------------------------------------------------------
@@ -644,15 +594,9 @@ typedef struct __attribute__((__packed__))
   GLuint data_length;
 } font_info_t;
 
-void receive_load_font_file(int* p_msg_length, GLFWwindow* window)
+void receive_load_font_file(int* p_msg_length, driver_data_t* p_data)
 {
-  window_data_t* p_data = glfwGetWindowUserPointer(window);
-  if (p_data == NULL)
-  {
-    send_puts("receive_set_graph BAD WINDOW");
-    return;
-  }
-  NVGcontext* p_ctx = p_data->context.p_ctx;
+  NVGcontext* p_ctx = p_data->p_ctx;
 
   font_info_t font_info;
   read_bytes_down(&font_info, sizeof(font_info_t), p_msg_length);
@@ -675,15 +619,9 @@ void receive_load_font_file(int* p_msg_length, GLFWwindow* window)
 }
 
 //---------------------------------------------------------
-void receive_load_font_blob(int* p_msg_length, GLFWwindow* window)
+void receive_load_font_blob(int* p_msg_length, driver_data_t* p_data)
 {
-  window_data_t* p_data = glfwGetWindowUserPointer(window);
-  if (p_data == NULL)
-  {
-    send_puts("receive_set_graph BAD WINDOW");
-    return;
-  }
-  NVGcontext* p_ctx = p_data->context.p_ctx;
+  NVGcontext* p_ctx = p_data->p_ctx;
 
   font_info_t font_info;
   read_bytes_down(&font_info, sizeof(font_info_t), p_msg_length);
@@ -703,9 +641,10 @@ void receive_load_font_blob(int* p_msg_length, GLFWwindow* window)
 
   free(p_name);
 }
+// case CMD_FREE_FONT:       receive_free_font( &msg_length ); break;
 
 //---------------------------------------------------------
-bool dispatch_message(int msg_length, GLFWwindow* window)
+bool dispatch_message(int msg_length, driver_data_t* p_data)
 {
 
   bool render = false;
@@ -715,25 +654,28 @@ bool dispatch_message(int msg_length, GLFWwindow* window)
   read_bytes_down(&msg_id, sizeof(uint32_t), &msg_length);
 
   char buff[200];
+  // send_puts("--------------------------------------------------");
+  // sprintf(buff, "start dispatch_message 0x%02X", msg_id);
+  // send_puts( buff );
 
   check_gl_error("starting error: ");
 
   switch (msg_id)
   {
     case CMD_QUIT:
-      receive_quit(window);
+      receive_quit(p_data);
       return false;
 
     case CMD_RENDER_GRAPH:
-      receive_render(&msg_length, window);
+      receive_render(&msg_length, p_data);
       render = true;
       break;
     case CMD_CLEAR_GRAPH:
-      receive_clear(&msg_length, window);
+      receive_clear(&msg_length, p_data);
       render = true;
       break;
     case CMD_SET_ROOT:
-      receive_set_root(&msg_length, window);
+      receive_set_root(&msg_length, p_data);
       render = true;
       break;
 
@@ -742,58 +684,39 @@ bool dispatch_message(int msg_length, GLFWwindow* window)
       render = true;
       break;
 
-    case CMD_INPUT:
-      receive_input(&msg_length, window);
-      break;
+      // case CMD_INPUT:           receive_input( &msg_length, p_data ); break;
 
     case CMD_QUERY_STATS:
-      receive_query_stats(window);
-      break;
-    case CMD_RESHAPE:
-      receive_reshape(&msg_length, window);
-      break;
-    case CMD_POSITION:
-      receive_position(&msg_length, window);
-      break;
-
-    case CMD_ICONIFY:
-      glfwIconifyWindow(window);
-      break;
-
-    case CMD_RESTORE:
-      glfwRestoreWindow(window);
-      break;
-    case CMD_SHOW:
-      glfwShowWindow(window);
-      break;
-    case CMD_HIDE:
-      glfwHideWindow(window);
+      receive_query_stats(p_data);
       break;
 
     // font handling
     case CMD_LOAD_FONT_FILE:
-      receive_load_font_file(&msg_length, window);
+      receive_load_font_file(&msg_length, p_data);
       render = true;
       break;
     case CMD_LOAD_FONT_BLOB:
-      receive_load_font_blob(&msg_length, window);
+      receive_load_font_blob(&msg_length, p_data);
       render = true;
       break;
+    // case CMD_FREE_FONT:       receive_free_font( &msg_length, p_data );
+    // break;
 
-    // the next three are in tx.c
+    // the next two are in texture.c
     case CMD_PUT_TX_BLOB:
-      receive_put_tx_blob(&msg_length, window);
+      receive_put_tx_blob(&msg_length, p_data);
       render = true;
       break;
-
-    case CMD_PUT_TX_RAW:
-      receive_put_tx_pixels(&msg_length, window);
-      render = true;
-      break;
-
+    // case CMD_PUT_TX_RAW:      receive_put_tx_raw( &msg_length, p_data );
+    // render = true; break;
     case CMD_FREE_TX_ID:
-      receive_free_tx_id(&msg_length, window);
+      receive_free_tx_id(&msg_length, p_data);
       break;
+
+      // the next set are in text.c
+      // case CMD_PUT_FONT:        receive_put_font_atlas( &msg_length, p_data
+      // );  render = true; break; case CMD_FREE_FONT_ID:
+      // receive_free_font_atlas( &msg_length, p_data ); render = true; break;
 
     case CMD_CRASH:
       receive_crash();
@@ -815,6 +738,7 @@ bool dispatch_message(int msg_length, GLFWwindow* window)
     free(p);
   }
 
+  sprintf(buff, "end dispatch_message %d", msg_id);
   check_gl_error(buff);
 
   return render;
@@ -832,7 +756,7 @@ uint64_t get_time_stamp()
 
 // read from the stdio in buffer and act on one message. Return true
 // if we need to redraw the screen. false if we do not
-bool handle_stdio_in(GLFWwindow* window)
+bool handle_stdio_in(driver_data_t* p_data)
 {
   int64_t        time_remaining = STDIO_TIMEOUT;
   int64_t        end_time       = get_time_stamp() + STDIO_TIMEOUT;
@@ -845,12 +769,11 @@ bool handle_stdio_in(GLFWwindow* window)
     tv.tv_usec = time_remaining;
 
     int len = read_msg_length(&tv);
-    if (len <= 0) {
+    if (len <= 0)
       break;
-    }
 
     // process the message
-    redraw = dispatch_message(len, window) || redraw;
+    redraw = dispatch_message(len, p_data) || redraw;
 
     // see if time is remaining, so we can process another one
     time_remaining = end_time - get_time_stamp();
@@ -859,3 +782,47 @@ bool handle_stdio_in(GLFWwindow* window)
   // return false to not cause a redraw
   return redraw;
 }
+
+//=============================================================================
+
+// void* comms_thread( void* window ) {
+//   int             len;
+//   bool            keep_going = true;
+
+//   // set the window into this thread's context
+//   glfwMakeContextCurrent(window);
+//   window_data_t*  p_data = glfwGetWindowUserPointer( window );
+//   if ( p_data == NULL ) {
+//     send_puts( "receive_set_graph BAD WINDOW" );
+//     return NULL;
+//   }
+
+//   // do a one-time endian check
+//   test_endian();
+
+//   // wait and execute commands in a loop
+//   while( keep_going ) {
+
+//     // block until there is an incoming message. Then return it's size
+//     // without reading anything else.
+//     len = read_msg_length();
+
+//     // if length is negative, something is seriously wrong fail and exit app
+//     if ( len <= 0 ) {
+//       send_puts( "ERROR - failed to read message length" );
+//       break;
+//     }
+
+//     // dispatch the message
+//     if ( pthread_rwlock_wrlock(&p_data->context.gl_lock) == 0 ) {
+//       glfwMakeContextCurrent(window);
+//       keep_going = p_data->keep_going && dispatch_message( len, window );
+//       pthread_rwlock_unlock(&p_data->context.gl_lock);
+//     }
+//   }
+
+//   // make sure the main app knows to quit
+//   p_data->keep_going = false;
+
+//   return NULL;
+// }

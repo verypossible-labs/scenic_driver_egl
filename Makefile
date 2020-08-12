@@ -1,6 +1,4 @@
-\MIX = mix
 CFLAGS = -O3 -std=c99
-
 PREFIX=$(MIX_APP_PATH)/priv
 
 ifndef MIX_ENV
@@ -15,36 +13,20 @@ ifeq ($(MIX_ENV),dev)
 	CFLAGS += -g
 endif
 
-ifneq ($(OS),Windows_NT)
-	CFLAGS += -fPIC
-
-	ifeq ($(shell uname),Darwin)
-		LDFLAGS += -framework Cocoa -framework OpenGL -Wno-deprecated
-	else
-	  LDFLAGS += -lGLESv2 -lm -lrt -ldl -lglfw -lEGL
-	endif
-endif
-
-
+CFLAGS += -fPIC -I/usr/include/drm
+LDFLAGS += -lGLESv2 -lm -lrt -ldl -lEGL -lgbm -ldrm
 
 .PHONY: all clean
 
-all: $(PREFIX)/$(MIX_ENV)/scenic_driver_glfw
+all: $(PREFIX)/$(MIX_ENV)/scenic_driver_egl
 # fonts
 
 SRCS = c_src/main.c c_src/comms.c c_src/nanovg/nanovg.c \
-	c_src/utils.c c_src/render_script.c c_src/tx.c
-	# c_src/nanovg/nanovg.c
-	# c_src/render.c c_src/text.c c_src/texture.c
+	c_src/utils.c c_src/render_script.c c_src/tx.c c_src/drm-common.c c_src/common.c c_src/drm-legacy.c
 
-$(PREFIX)/$(MIX_ENV)/scenic_driver_glfw: $(SRCS)
+$(PREFIX)/$(MIX_ENV)/scenic_driver_egl: $(SRCS)
 	mkdir -p $(PREFIX)/$(MIX_ENV)
 	$(CC) $(CFLAGS) -o $@ $(SRCS) $(LDFLAGS)
 
-# fonts: priv/
-# 	ln -fs ../fonts priv/
-
 clean:
 	$(RM) -r $(PREFIX)/$(MIX_ENV)
-#	$(RM) -r $(PREFIX)/test
-#	$(RM) -r $(PREFIX)/prod

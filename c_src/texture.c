@@ -6,14 +6,11 @@
 Functions to load textures onto the graphics card
 */
 
-#define GLFW_INCLUDE_ES2
-#define GLFW_INCLUDE_GLEXT
-#include <GLFW/glfw3.h>
-#include <stdlib.h> // malloc
-
-#include "comms.h"
 #include "texture.h"
+#include "comms.h"
 #include "types.h"
+#include <GLES/gl.h>
+#include <stdlib.h> // malloc
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_NO_BMP

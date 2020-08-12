@@ -3,8 +3,8 @@
 #  Copyright © 2018 Kry10 Industries. All rights reserved.
 #
 
-defmodule Scenic.Driver.Glfw.Font do
-  alias Scenic.Driver.Glfw
+defmodule ScenicDriverEGL.Font do
+  alias ScenicDriverEGL
   alias Scenic.Cache
   require Logger
 
@@ -46,7 +46,7 @@ defmodule Scenic.Driver.Glfw.Font do
       0::size(8),
       font_blob::binary
     >>
-    |> Glfw.Port.send(port)
+    |> ScenicDriverEGL.Port.send(port)
   end
 
   # --------------------------------------------------------
@@ -60,6 +60,6 @@ defmodule Scenic.Driver.Glfw.Font do
       # null terminate so it can be used directly
       0::size(8)
     >>
-    |> Glfw.Port.send(port)
+    |> ScenicDriverEGL.Port.send(port)
   end
 end

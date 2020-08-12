@@ -1,11 +1,11 @@
-defmodule Scenic.Driver.GlfwTest do
+defmodule ScenicDriverEGLTest do
   use ExUnit.Case
-  doctest Scenic.Driver.Glfw
+  doctest ScenicDriverEGL
   alias Scenic.Graph
   alias Scenic.Scene
   alias Scenic.Cache
   import Scenic.Primitives
-  alias Scenic.Driver.Glfw
+  alias ScenicDriverEGL
 
   @name :glfw_test
   @size {700, 600}
@@ -33,7 +33,7 @@ defmodule Scenic.Driver.GlfwTest do
   end
 
   test "Integration style test" do
-    {:ok, state} = Glfw.init(self(), @size, @config)
+    {:ok, state} = ScenicDriverEGL.init(self(), @size, @config)
     assert state.clear_color == {0, 0, 0, 255}
     assert state.closing == false
     assert state.currently_drawing == []
@@ -66,13 +66,13 @@ defmodule Scenic.Driver.GlfwTest do
 
     # give the port time to spin up
     Process.sleep(1500)
-    assert Glfw.Cache.load_static_texture(@parrot_hash, state.port) == true
+    assert ScenicDriverEGL.Cache.load_static_texture(@parrot_hash, state.port) == true
 
     # clear
     Graph.build(clear_color: :green)
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:set_root, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:set_root, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(400)
 
@@ -81,7 +81,7 @@ defmodule Scenic.Driver.GlfwTest do
     |> arc({100, 0, 1}, stroke: {2, :green}, translate: {300, 300})
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:set_root, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:set_root, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -90,7 +90,7 @@ defmodule Scenic.Driver.GlfwTest do
     |> circle(100, stroke: {2, :green}, translate: {200, 200})
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:set_root, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:set_root, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -98,7 +98,7 @@ defmodule Scenic.Driver.GlfwTest do
     |> circle(100, stroke: {8, :green}, fill: :azure, translate: {200, 200})
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -110,7 +110,7 @@ defmodule Scenic.Driver.GlfwTest do
     )
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -122,7 +122,7 @@ defmodule Scenic.Driver.GlfwTest do
     )
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -134,7 +134,7 @@ defmodule Scenic.Driver.GlfwTest do
     )
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -142,7 +142,7 @@ defmodule Scenic.Driver.GlfwTest do
     |> circle(100, stroke: {8, :green}, fill: {:image, @parrot_hash}, translate: {200, 200})
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -151,7 +151,7 @@ defmodule Scenic.Driver.GlfwTest do
     |> ellipse({100, 150}, stroke: {2, :green}, translate: {200, 200})
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:set_root, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:set_root, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -159,7 +159,7 @@ defmodule Scenic.Driver.GlfwTest do
     |> ellipse({100, 150}, stroke: {8, :green}, fill: :azure, translate: {200, 200})
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -171,7 +171,7 @@ defmodule Scenic.Driver.GlfwTest do
     )
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -183,7 +183,7 @@ defmodule Scenic.Driver.GlfwTest do
     )
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -195,7 +195,7 @@ defmodule Scenic.Driver.GlfwTest do
     )
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -205,7 +205,7 @@ defmodule Scenic.Driver.GlfwTest do
     |> line({{0, 200}, {200, 0}}, stroke: {4, :red})
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -224,7 +224,7 @@ defmodule Scenic.Driver.GlfwTest do
     )
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
 
     # quad
@@ -232,7 +232,7 @@ defmodule Scenic.Driver.GlfwTest do
     |> quad({{0, 20}, {30, 0}, {36, 26}, {25, 40}}, stroke: {4, :green}, fill: :purple)
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -241,7 +241,7 @@ defmodule Scenic.Driver.GlfwTest do
     |> rect({200, 100}, stroke: {4, :green}, fill: :red, translate: {40, 60})
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -250,7 +250,7 @@ defmodule Scenic.Driver.GlfwTest do
     |> rrect({200, 100, 20}, stroke: {4, :green}, fill: :red, translate: {40, 60})
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -259,7 +259,7 @@ defmodule Scenic.Driver.GlfwTest do
     |> sector({200, 0, 1}, stroke: {2, :yellow}, translate: {100, 100})
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -270,7 +270,7 @@ defmodule Scenic.Driver.GlfwTest do
     )
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -281,7 +281,7 @@ defmodule Scenic.Driver.GlfwTest do
     )
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -292,20 +292,20 @@ defmodule Scenic.Driver.GlfwTest do
     )
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
     # text
-    Glfw.Font.load_font(@roboto_hash, state.port)
-    Glfw.Font.load_font(@roboto_mono_hash, state.port)
-    # Glfw.Font.load_font(:roboto_slab, state.port)
+    ScenicDriverEGL.Font.load_font(@roboto_hash, state.port)
+    ScenicDriverEGL.Font.load_font(@roboto_mono_hash, state.port)
+    # ScenicDriverEGL.Font.load_font(:roboto_slab, state.port)
 
     Graph.build(font: :roboto, font_size: 24)
     |> text("This is some text", fill: :yellow, translate: {200, 100})
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -313,7 +313,7 @@ defmodule Scenic.Driver.GlfwTest do
     |> text("This is some text", fill: :yellow, translate: {200, 100})
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -321,7 +321,7 @@ defmodule Scenic.Driver.GlfwTest do
     |> text("This is some text", fill: :yellow, translate: {200, 100})
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -329,7 +329,7 @@ defmodule Scenic.Driver.GlfwTest do
     |> text("This is some text", fill: :yellow, translate: {200, 100})
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -337,7 +337,7 @@ defmodule Scenic.Driver.GlfwTest do
     |> text("This is some text, blurred", fill: :yellow, translate: {200, 100})
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -346,23 +346,23 @@ defmodule Scenic.Driver.GlfwTest do
              {:ok, @font_metrics_hash}
 
     assert Cache.Static.Font.load(@font_path, @font_hash) == {:ok, @font_hash}
-    Glfw.Font.load_font(@font_hash, state.port)
+    ScenicDriverEGL.Font.load_font(@font_hash, state.port)
 
     Graph.build(font: @font_hash, font_size: 60)
     |> text("From a cached font", fill: :azure, translate: {100, 100})
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
-    Glfw.Font.free_font(@font_hash, state.port)
+    ScenicDriverEGL.Font.free_font(@font_hash, state.port)
 
     # triangles
     Graph.build()
     |> triangle(@triangle, stroke: {2, :green}, translate: {100, 100})
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -370,7 +370,7 @@ defmodule Scenic.Driver.GlfwTest do
     |> triangle(@triangle, stroke: {8, :green}, fill: :azure, translate: {100, 100})
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -382,7 +382,7 @@ defmodule Scenic.Driver.GlfwTest do
     )
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -394,7 +394,7 @@ defmodule Scenic.Driver.GlfwTest do
     )
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     state = %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
 
@@ -406,7 +406,7 @@ defmodule Scenic.Driver.GlfwTest do
     )
     |> test_push_graph(graph_key)
 
-    {:noreply, state} = Glfw.handle_cast({:update_graph, graph_key}, state)
+    {:noreply, state} = ScenicDriverEGL.handle_cast({:update_graph, graph_key}, state)
     %{state | pending_flush: false, dirty_graphs: []}
     Process.sleep(40)
   end

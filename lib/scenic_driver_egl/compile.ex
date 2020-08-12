@@ -7,7 +7,7 @@
 #
 #
 
-defmodule Scenic.Driver.Glfw.Compile do
+defmodule ScenicDriverEGL.Compile do
   alias Scenic.Primitive
 
   require Logger

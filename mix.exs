@@ -1,12 +1,12 @@
-defmodule Scenic.Driver.Glfw.MixProject do
+defmodule ScenicDriverEGL.MixProject do
   use Mix.Project
 
-  @github "https://github.com/boydm/scenic_driver_glfw"
-  @version "0.10.1"
+  @github "https://github.com/verypossible-labs/scenic_driver_egl"
+  @version "0.1.0"
 
   def project do
     [
-      app: :scenic_driver_glfw,
+      app: :scenic_driver_egl,
       version: @version,
       build_path: "_build",
       config_path: "config/config.exs",
@@ -22,9 +22,7 @@ defmodule Scenic.Driver.Glfw.MixProject do
       deps: deps(),
       dialyzer: [plt_add_deps: :transitive],
       package: [
-        name: :scenic_driver_glfw,
-        contributors: ["Boyd Multerer"],
-        maintainers: ["Boyd Multerer"],
+        name: :scenic_driver_egl,
         licenses: ["Apache 2"],
         links: %{github: @github},
         files: [
@@ -38,15 +36,12 @@ defmodule Scenic.Driver.Glfw.MixProject do
           "mix.exs",
           "README.md",
           "LICENSE",
-          "changelist.md"
+          "CHANGELOG.md"
         ]
       ],
       docs: [
-        extras: doc_guides(),
-        main: "overview",
         source_ref: "v#{@version}",
-        source_url: "https://github.com/boydm/scenic_driver_glfw"
-        # homepage_url: "http://kry10.com",
+        source_url: @github
       ]
     ]
   end
@@ -61,8 +56,8 @@ defmodule Scenic.Driver.Glfw.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:elixir_make, "~> 0.6"},
       {:scenic, "~> 0.10"},
+      {:elixir_make, "~> 0.6", runtime: false},
       {:ex_doc, ">= 0.0.0", only: [:dev]},
       {:dialyxir, "~> 0.5", only: :dev, runtime: false}
     ]
@@ -70,13 +65,7 @@ defmodule Scenic.Driver.Glfw.MixProject do
 
   defp description() do
     """
-    Scenic.Driver.Glfw - Main Scenic driver for MacOs and Ubuntu
+    ScenicDriverEGL - Scenic driver for Linux DRM
     """
-  end
-
-  defp doc_guides do
-    [
-      "guides/overview.md"
-    ]
   end
 end

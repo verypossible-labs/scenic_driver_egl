@@ -5,13 +5,14 @@
 
 functions to play a compiled render script
 */
-#include <math.h>
-#include <stdio.h>
 
-#define GLFW_INCLUDE_ES2
-#define GLFW_INCLUDE_GLEXT
-#include <GLFW/glfw3.h>
+#include <stdio.h>
+// #include <string.h>
+#include <math.h>
+
 #include <stdlib.h>
+// #include <GLFW/glfw3.h>
+#include <GLES2/gl2.h>
 
 #include "comms.h"
 #include "nanovg/nanovg.h"
@@ -33,7 +34,7 @@ functions to play a compiled render script
 #define OP_PAINT_IMAGE 0X09
 #define OP_PAINT_DYNAMIC 0X0A
 
-//#define OP_ANTI_ALIAS 0X0A
+//  #define OP_ANTI_ALIAS              0X0A
 
 #define OP_STROKE_WIDTH 0X0C
 #define OP_STROKE_COLOR 0X0D
@@ -102,7 +103,7 @@ NVGpaint current_paint;
 //=============================================================================
 // access functions for scripts
 
-void delete_script(window_data_t* p_data, GLuint id)
+void delete_script(driver_data_t* p_data, GLuint id)
 {
   if (p_data->p_scripts[id])
   {
@@ -111,7 +112,7 @@ void delete_script(window_data_t* p_data, GLuint id)
   }
 }
 
-void delete_all(window_data_t* p_data)
+void delete_all(driver_data_t* p_data)
 {
   for (GLuint i = 0; i < p_data->num_scripts; i++)
   {
@@ -119,13 +120,13 @@ void delete_all(window_data_t* p_data)
   }
 }
 
-void put_script(window_data_t* p_data, GLuint id, void* p_script)
+void put_script(driver_data_t* p_data, GLuint id, void* p_script)
 {
   delete_script(p_data, id);
   p_data->p_scripts[id] = p_script;
 }
 
-void* get_script(window_data_t* p_data, GLuint id)
+void* get_script(driver_data_t* p_data, GLuint id)
 {
   return p_data->p_scripts[id];
 }
@@ -194,6 +195,16 @@ typedef struct __attribute__((__packed__))
   GLfloat y2;
   GLfloat radius;
 } arc_to_t;
+
+// typedef struct __attribute__((__packed__))
+// {
+//   GLfloat     cx;
+//   GLfloat     cy;
+//   GLfloat     radius;
+//   GLfloat     a0;
+//   GLfloat     a1;
+//   byte        direction;
+// } arc_t;
 
 typedef struct __attribute__((__packed__))
 {
@@ -304,9 +315,12 @@ typedef struct __attribute__((__packed__))
 
 //---------------------------------------------------------
 // run script
-void* internal_run_script(void* p_script, window_data_t* p_data)
+void* internal_run_script(void* p_script, driver_data_t* p_data)
 {
   GLuint id = *(GLuint*) p_script;
+  // char buff[200];
+  // sprintf(buff, "run_script %d", id);
+  // send_puts( buff );
   run_script(id, p_data);
   return p_script + sizeof(GLuint);
 }
@@ -350,7 +364,7 @@ void* paint_radial(NVGcontext* p_ctx, void* p_script)
   return p_script + sizeof(radial_gradient_t);
 }
 
-void* paint_image(NVGcontext* p_ctx, void* p_script, window_data_t* p_data)
+void* paint_image(NVGcontext* p_ctx, void* p_script, driver_data_t* p_data)
 {
   image_pattern_t* img = (image_pattern_t*) p_script;
   p_script += sizeof(image_pattern_t);
@@ -390,7 +404,7 @@ void* paint_image(NVGcontext* p_ctx, void* p_script, window_data_t* p_data)
   return p_script + img->key_size;
 }
 
-void* paint_dynamic(NVGcontext* p_ctx, void* p_script, window_data_t* p_data)
+void* paint_dynamic(NVGcontext* p_ctx, void* p_script, driver_data_t* p_data)
 {
   image_pattern_t* img = (image_pattern_t*) p_script;
   p_script += sizeof(image_pattern_t);
@@ -724,8 +738,16 @@ void* text(NVGcontext* p_ctx, void* p_script)
   return p_script + ((text_info->size + 3) & ~3);
 }
 
+// typedef struct __attribute__((__packed__))
+// {
+//   GLfloat     x;
+//   GLfloat     y;
+//   GLuint      size;
+// } text_t;
+
 //---------------------------------------------------------
 // transforms
+
 void* tx_rotate(NVGcontext* p_ctx, void* p_script)
 {
   nvgRotate(p_ctx, *(float*) p_script);
@@ -816,9 +838,12 @@ void* text_height(NVGcontext* p_ctx, void* p_script)
 // the main script function
 
 //---------------------------------------------------------
-void run_script(GLuint script_id, window_data_t* p_data)
+void run_script(GLuint script_id, driver_data_t* p_data)
 {
   char buff[200];
+
+  // sprintf(buff, "script id: %d", script_id);
+  // send_puts(buff);
 
   // get the script in question. bail if it isn't there
   void* p_script = get_script(p_data, script_id);
@@ -830,7 +855,7 @@ void run_script(GLuint script_id, window_data_t* p_data)
   };
 
   // setup
-  NVGcontext* p_ctx = p_data->context.p_ctx;
+  NVGcontext* p_ctx = p_data->p_ctx;
 
   // get the first op
   GLuint op = *(GLuint*) p_script;
@@ -839,6 +864,8 @@ void run_script(GLuint script_id, window_data_t* p_data)
   // recurse into more script calls if necessary
   while (op != OP_TERMINATE)
   {
+    // sprintf(buff, "op: 0x%X", op);
+    // send_puts(buff);
 
     // advance the pointer past the op code
     p_script += sizeof(GLuint);
@@ -879,9 +906,8 @@ void run_script(GLuint script_id, window_data_t* p_data)
         p_script = paint_dynamic(p_ctx, p_script, p_data);
         break;
 
-      // case OP_ANTI_ALIAS:
-      //   p_script = shape_anti_alias(p_ctx, p_script);
-      //   break;
+        // case OP_ANTI_ALIAS:               p_script = shape_anti_alias( p_ctx,
+        // p_script ); break;
 
       case OP_STROKE_WIDTH:
         p_script = shape_width(p_ctx, p_script);
@@ -1033,6 +1059,7 @@ void run_script(GLuint script_id, window_data_t* p_data)
       default:
         sprintf(buff, "!!!Unknown script command: %d", op);
         send_puts(buff);
+        // send_puts( "!!!Unknown script command" );
         return;
     }
 

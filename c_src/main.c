@@ -1,18 +1,11 @@
-/*
-#  Created by Boyd Multerer on 02/14/18.
-#  Copyright © 2018 Kry10 Industries. All rights reserved.
-#
-*/
-
 #include <poll.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define GLFW_INCLUDE_ES2
-#define GLFW_INCLUDE_GLEXT
-#include <GLFW/glfw3.h>
+#include "common.h"
+#include "drm-common.h"
 
 #define NANOVG_GLES2_IMPLEMENTATION
 #include "nanovg/nanovg.h"
@@ -24,252 +17,93 @@
 #include "utils.h"
 
 #define STDIN_FILENO 0
+#define DEFAULT_SCREEN 0
+#define MSG_OUT_PUTS 0x02
 
-#define MSG_KEY_MASK 0x0001
-#define MSG_CHAR_MASK 0x0002
-#define MSG_MOUSE_MOVE_MASK 0x0004
-#define MSG_MOUSE_BUTTON_MASK 0x0008
-#define MSG_MOUSE_SCROLL_MASK 0x0010
-#define MSG_MOUSE_ENTER_MASK 0x0020
-#define MSG_DROP_PATHS_MASK 0x0040
-#define MSG_RESHAPE_MASK 0x0080
-
-//=============================================================================
-// window callbacks
-
-void errorcb(int error, const char* desc)
+typedef struct
 {
-  char buff[200];
-  sprintf(buff, "GLFW error %d: %s\n", error, desc);
-  send_puts(buff);
-}
+  struct egl  egl;
+  int         screen_width;
+  int         screen_height;
+  NVGcontext* p_ctx;
+} egl_data_t;
 
-void render_frame() {}
+static const struct egl* egl;
+static const struct gbm* gbm;
+static const struct drm* drm;
 
-//---------------------------------------------------------
-void reshape_framebuffer(GLFWwindow* window, int w, int h)
+void init_display(egl_data_t* p_data, int debug_mode)
 {
-  window_data_t* p_data = glfwGetWindowUserPointer(window);
+  p_data->screen_width  = gbm->width;
+  p_data->screen_height = gbm->height;
 
-  p_data->context.frame_width  = w;
-  p_data->context.frame_height = h;
-}
+  //-----------------------------------
+  // get an EGL display connection
+  EGLBoolean result;
 
-//---------------------------------------------------------
-void reshape_window(GLFWwindow* window, int w, int h)
-{
-  window_data_t* p_data = glfwGetWindowUserPointer(window);
+  init_egl(&p_data->egl, gbm, 0);
 
-  // calculate the framebuffer to window size ratios
-  // this will be used for things like oversampling fonts
-  p_data->context.window_width  = w;
-  p_data->context.window_height = h;
+  //-------------------
+  // initialize nanovg
 
-  p_data->context.frame_ratio.x = (float) p_data->context.frame_width /
-                                  (float) p_data->context.window_width;
-  p_data->context.frame_ratio.y = (float) p_data->context.frame_height /
-                                  (float) p_data->context.window_height;
-
-  send_reshape(p_data->context.window_width, p_data->context.window_height, w,
-               h);
-
-  p_data->redraw = true;
-}
-
-//---------------------------------------------------------
-void key_callback(GLFWwindow* window, int key, int scancode, int action,
-                  int mods)
-{
-  window_data_t* p_data = glfwGetWindowUserPointer(window);
-  if (p_data->input_flags & MSG_KEY_MASK)
+  p_data->p_ctx =
+      nvgCreateGLES2(NVG_ANTIALIAS | NVG_STENCIL_STROKES | NVG_DEBUG);
+  if (p_data->p_ctx == NULL)
   {
-    send_key(key, scancode, action, mods);
+    send_puts("EGL driver error: failed nvgCreateGLES2");
+    return;
   }
 }
 
-//---------------------------------------------------------
-void charmods_callback(GLFWwindow* window, unsigned int codepoint, int mods)
+void test_draw(egl_data_t* p_data)
 {
-  window_data_t* p_data = glfwGetWindowUserPointer(window);
-  if (p_data->input_flags & MSG_CHAR_MASK)
-  {
-    send_codepoint(codepoint, mods);
-  }
-}
+  //-----------------------------------
+  // Set background color and clear buffers
+  // glClearColor(0.15f, 0.25f, 0.35f, 1.0f);
+  // glClearColor(0.098f, 0.098f, 0.439f, 1.0f);    // midnight blue
+  // glClearColor(0.545f, 0.000f, 0.000f, 1.0f);    // dark red
+  // glClearColor(0.184f, 0.310f, 0.310f, 1.0f);       // dark slate gray
+  // glClearColor(0.0f, 0.0f, 0.0f, 1.0f);       // black
 
-//---------------------------------------------------------
-static void cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
-{
-  float          x, y;
-  window_data_t* p_data = glfwGetWindowUserPointer(window);
-  if (p_data->input_flags & MSG_MOUSE_MOVE_MASK || true)
-  {
-    x = xpos;
-    y = ypos;
-    // only send the message if the postion changed
-    if ((p_data->last_x != x) || (p_data->last_y != y))
-    {
-      send_cursor_pos(x, y);
-      p_data->last_x = x;
-      p_data->last_y = y;
-    }
-  }
-}
+  // glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-//---------------------------------------------------------
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
-{
-  double         x, y;
-  window_data_t* p_data = glfwGetWindowUserPointer(window);
-  if (p_data->input_flags & MSG_MOUSE_BUTTON_MASK)
-  {
-    glfwGetCursorPos(window, &x, &y);
-    send_mouse_button(button, action, mods, x, y);
-  }
-}
+  NVGcontext* p_ctx         = p_data->p_ctx;
+  int         screen_width  = p_data->screen_width;
+  int         screen_height = p_data->screen_height;
 
-//---------------------------------------------------------
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
-{
-  double         x, y;
-  window_data_t* p_data = glfwGetWindowUserPointer(window);
-  if (p_data->input_flags & MSG_MOUSE_SCROLL_MASK)
-  {
-    glfwGetCursorPos(window, &x, &y);
-    send_scroll(xoffset, yoffset, x, y);
-  }
-}
-//---------------------------------------------------------
-void cursor_enter_callback(GLFWwindow* window, int entered)
-{
-  double         x, y;
-  window_data_t* p_data = glfwGetWindowUserPointer(window);
-  if (p_data->input_flags & MSG_MOUSE_ENTER_MASK)
-  {
-    glfwGetCursorPos(window, &x, &y);
-    send_cursor_enter(entered, x, y);
-  }
-}
+  // nvgBeginFrame(p_ctx, screen_width, screen_height, 1.0f);
 
-//---------------------------------------------------------
-void window_close_callback(GLFWwindow* window)
-{
-  // let the calling app filter the close event. Send a message up.
-  // if the app wants to let the window close, it needs to send a close back
-  // down.
-  send_close();
-  glfwSetWindowShouldClose(window, false);
+  // Next, draw graph line
+  nvgBeginPath(p_ctx);
+  nvgMoveTo(p_ctx, 0, 0);
+  nvgLineTo(p_ctx, screen_width, screen_height);
+  nvgStrokeColor(p_ctx, nvgRGBA(0, 160, 192, 255));
+  nvgStrokeWidth(p_ctx, 3.0f);
+  nvgStroke(p_ctx);
+
+  nvgBeginPath(p_ctx);
+  nvgMoveTo(p_ctx, screen_width, 0);
+  nvgLineTo(p_ctx, 0, screen_height);
+  nvgStrokeColor(p_ctx, nvgRGBA(0, 160, 192, 255));
+  nvgStrokeWidth(p_ctx, 3.0f);
+  nvgStroke(p_ctx);
+
+  nvgBeginPath(p_ctx);
+  nvgCircle(p_ctx, screen_width / 2, screen_height / 2, 50);
+  nvgFillColor(p_ctx, nvgRGBAf(0.545f, 0.000f, 0.000f, 1.0f));
+  nvgFill(p_data->p_ctx);
+  nvgStroke(p_ctx);
+
+  // nvgEndFrame(p_ctx);
+
+  // eglSwapBuffers(p_data->display, p_data->surface);
 }
 
 //=============================================================================
 // main setup
 
 //---------------------------------------------------------
-// done before the window is created
-void set_window_hints(const char* resizable)
-{
-  if (strncmp(resizable, "true", 4) != 0)
-  {
-    // don't let the user resize the window
-    glfwWindowHint(GLFW_RESIZABLE, false);
-  }
 
-  glfwWindowHint(GLFW_MAXIMIZED, true);
-
-  glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
-  glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-  glfwWindowHint(GLFW_RED_BITS, 5);
-  glfwWindowHint(GLFW_GREEN_BITS, 6);
-  glfwWindowHint(GLFW_BLUE_BITS, 5);
-  glfwWindowHint(GLFW_REFRESH_RATE, GLFW_DONT_CARE);
-}
-
-//---------------------------------------------------------
-// set up one-time features of the window
-void setup_window(GLFWwindow* window, int width, int height, int num_scripts)
-{
-  window_data_t* p_data;
-
-  // set up the window's private data
-  p_data = malloc(sizeof(window_data_t));
-  memset(p_data, 0, sizeof(window_data_t));
-  p_data->p_scripts = NULL;
-
-  p_data->keep_going = true;
-
-  p_data->input_flags = 0xFFFF;
-  p_data->last_x      = -1.0f;
-  p_data->last_y      = -1.0f;
-
-  p_data->root_script = -1;
-
-  p_data->context.window_width  = width;
-  p_data->context.window_height = height;
-  p_data->context.frame_ratio.x = 1.0f;
-  p_data->context.frame_ratio.y = 1.0f;
-
-  glfwSetWindowUserPointer(window, p_data);
-
-  // Make the window's context current
-  glfwMakeContextCurrent(window);
-
-  // get the actual framebuffer size to set it up
-  int frame_width, frame_height;
-  glfwGetFramebufferSize(window, &frame_width, &frame_height);
-  reshape_framebuffer(window, frame_width, frame_height);
-
-  // get the actual window size to set it up
-  int window_width, window_height;
-  glfwGetWindowSize(window, &window_width, &window_height);
-  reshape_window(window, window_width, window_height);
-
-  p_data->context.p_ctx =
-      nvgCreateGLES2(NVG_ANTIALIAS | NVG_STENCIL_STROKES | NVG_DEBUG);
-  if (p_data->context.p_ctx == NULL)
-  {
-    send_puts("Could not init nanovg!!!");
-    return;
-  }
-
-  // set up callbacks
-  glfwSetFramebufferSizeCallback(window, reshape_framebuffer);
-  glfwSetWindowSizeCallback(window, reshape_window);
-  glfwSetKeyCallback(window, key_callback);
-  glfwSetCharModsCallback(window, charmods_callback);
-  glfwSetCursorPosCallback(window, cursor_pos_callback);
-  glfwSetCursorEnterCallback(window, cursor_enter_callback);
-  glfwSetMouseButtonCallback(window, mouse_button_callback);
-  glfwSetScrollCallback(window, scroll_callback);
-  glfwSetWindowCloseCallback(window, window_close_callback);
-
-  // set up the scripts table
-  p_data->p_scripts = malloc(sizeof(void*) * num_scripts);
-  memset(p_data->p_scripts, 0, sizeof(void*) * num_scripts);
-  p_data->num_scripts = num_scripts;
-
-  // set the initial clear color
-  glClearColor(0.0, 0.0, 0.0, 1.0);
-
-  // signal the app that the window is ready
-  send_ready(0);
-}
-
-//---------------------------------------------------------
-// tear down one-time features of the window
-void cleanup_window(GLFWwindow* window)
-{
-  // free the window's private data
-  free(glfwGetWindowUserPointer(window));
-}
-
-//---------------------------------------------------------
-// return true if the caller side of the stdin pipe is open and in
-// business. If it closes, then return false
-// http://pubs.opengroup.org/onlinepubs/7908799/xsh/poll.html
-// see
-// https://stackoverflow.com/questions/25147181/pollhup-vs-pollnval-or-what-is-pollhup
 bool isCallerDown()
 {
   struct pollfd ufd;
@@ -284,92 +118,87 @@ bool isCallerDown()
 //---------------------------------------------------------
 int main(int argc, char** argv)
 {
-  GLFWwindow* window;
-  GLuint      root_dl_id;
+  driver_data_t data;
+  egl_data_t    egl_data;
+
+  uint32_t     format                         = DRM_FORMAT_XRGB8888;
+  uint64_t     modifier                       = DRM_FORMAT_MOD_LINEAR;
+  unsigned int vrefresh                       = 0;
+  char         mode_str[DRM_DISPLAY_MODE_LEN] = "";
+  const char*  device                         = NULL;
+  unsigned int count                          = ~0;
 
   test_endian();
 
   // super simple arg check
-  if (argc != 6)
+  // if ( argc != 3 ) {
+  //   send_puts("Argument check failed!");
+  //   printf("\r\nscenic_driver_egl should be launched via the ScenicDriverEGL
+  //   library.\r\n\r\n"); return 0;
+  // }
+  int num_scripts = atoi(argv[1]);
+  int debug_mode  = atoi(argv[2]);
+
+  // initialize
+
+  drm = init_drm_legacy(device, mode_str, vrefresh, count);
+
+  if (!drm)
   {
-    printf("\r\nscenic_driver_glfw should be launched via the "
-           "Scenic.Driver.Glfw library.\r\n\r\n");
-    return 0;
-  }
-  // argv[1] is the width of the window
-  int width = atoi(argv[1]);
-  // argv[2] is the height of the window
-  int height = atoi(argv[2]);
-
-  // argv[5] is the space to allocate for lists
-  // becoming obsolete
-  int dl_block_size = atoi(argv[5]);
-
-  /* Initialize the library */
-  if (!glfwInit())
-  {
-    return -1;
-  }
-  glfwSetErrorCallback(errorcb);
-
-  // set the glfw window hints - done before window creation
-  // argv[4] is the resizable flag
-   set_window_hints(argv[4]);
-
-  /* Create a windowed mode window and its OpenGL context */
-  // argv[3] is the window title
-  window = glfwCreateWindow(width, height, argv[3], glfwGetPrimaryMonitor(), NULL);
-  if (!window)
-  {
-    glfwTerminate();
+    printf("failed to initialize DRM\n");
     return -1;
   }
 
-  // set up one-time features of the window
-  setup_window(window, width, height, dl_block_size);
-  window_data_t* p_data = glfwGetWindowUserPointer(window);
+  gbm = init_gbm(drm->fd, drm->mode->hdisplay, drm->mode->vdisplay, format,
+                 modifier);
 
-#ifdef __APPLE__
-  // heinous hack to get around macOS Mojave GL issues
-  // without this, the window is blank until manually resized
-  glfwPollEvents();
-  int w, h;
-  glfwGetWindowSize(window, &w, &h);
-  glfwSetWindowSize(window, w++, h);
-  glfwSetWindowSize(window, w, h);
-#endif
+  if (!gbm)
+  {
+    printf("failed to initialize GBM\n");
+    return -1;
+  }
+
+  init_display(&egl_data, 0);
+
+  printf("This worked! \n");
+
+  // set up the scripts table
+  memset(&data, 0, sizeof(driver_data_t));
+  data.p_scripts = malloc(sizeof(void*) * num_scripts);
+  memset(data.p_scripts, 0, sizeof(void*) * num_scripts);
+  data.keep_going    = true;
+  data.num_scripts   = num_scripts;
+  data.p_ctx         = egl_data.p_ctx;
+  data.screen_width  = egl_data.screen_width;
+  data.screen_height = egl_data.screen_height;
+
+  // signal the app that the window is ready
+  send_ready(0, egl_data.screen_width, egl_data.screen_height);
+
+  test_draw(&egl_data);
 
   /* Loop until the calling app closes the window */
-  while (p_data->keep_going && !isCallerDown())
+  while (data.keep_going && !isCallerDown())
   {
     // check for incoming messages - blocks with a timeout
-    if (p_data->redraw || handle_stdio_in(window))
+    if (handle_stdio_in(&data))
     {
-      p_data->redraw = false;
 
       // clear the buffer
       glClear(GL_COLOR_BUFFER_BIT);
+
       // render the scene
-      nvgBeginFrame(p_data->context.p_ctx, p_data->context.window_width,
-                    p_data->context.window_height,
-                    p_data->context.frame_ratio.x);
-      if (p_data->root_script >= 0)
+      nvgBeginFrame(egl_data.p_ctx, egl_data.screen_width,
+                    egl_data.screen_height, 1.0f);
+      if (data.root_script >= 0)
       {
-        run_script(p_data->root_script, p_data);
+        run_script(data.root_script, &data);
       }
-      nvgEndFrame(p_data->context.p_ctx);
+      nvgEndFrame(data.p_ctx);
+
       // Swap front and back buffers
-      glfwSwapBuffers(window);
+      eglSwapBuffers(egl_data.egl.display, egl_data.egl.surface);
     }
-
-    // poll for events and return immediately
-    // TODO: This is causing the application to crash on Beaglebone
-    //glfwPollEvents();
   }
-
-  // clean up
-  cleanup_window(window);
-  glfwTerminate();
-
   return 0;
 }

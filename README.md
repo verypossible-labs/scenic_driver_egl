@@ -1,60 +1,21 @@
-# Scenic.Driver.Glfw
+# ScenicDriverEGL
 
-The main Mac and Ubuntu driver for Scenic applications
-
-Might work on other systems too, but I've only tested those two...
-
-See main Scenic documentation for the real installation steps
-
-### Installing on MacOS
-
-The easiest way to install on MacOS is to use Homebrew. Just run the following in a terminal:
-
-```bash
-brew update
-brew install glfw3 glew pkg-config
-```
-
-
-Once these components have been installed, you should be able to build the `scenic_driver_glfw` driver.
-
-### Installing on Ubuntu
-
-The easiest way to install on Ubuntu is to use apt-get. Just run the following:
-
-```bash
-apt-get update
-apt-get install pkgconf libglfw3 libglfw3-dev libglew2.0 libglew-dev
-```
-
-Once these components have been installed, you should be able to build the `scenic_driver_glfw` driver.
-
-### Installing on Archlinux
-
-The easiest way to install on Archlinux is to use pacman. Just run the following:
-
-
-```bash
-pacman -Syu
-sudo pacman -S glfw-x11 glew
-```
-
-If you're using wayland, you'll probably need `glfw-wayland` instead of `glfw-x11` and `glew-wayland` instead of `glew`
+A Scenic driver for rendering to the Linux Direct Rendering Manager (DRM/KMS)
 
 ## General Installation
 
 As this is a hex package, it can be installed
-by adding `scenic_driver_glfw` to your list of dependencies in `mix.exs`:
+by adding `scenic_driver_egl` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:scenic_driver_glfw, "~> 0.10"}
+    {:scenic_driver_egl, "~> 0.1"}
   ]
 end
 ```
 
 ## Documentation
 
-Documentation can be found at [https://hexdocs.pm/scenic_driver_glfw](https://hexdocs.pm/scenic_driver_glfw).
+Documentation can be found at [https://hexdocs.pm/scenic_driver_egl](https://hexdocs.pm/scenic_driver_egl).
 

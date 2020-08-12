@@ -11,11 +11,11 @@ functions to play a compiled render script
 
 #include "types.h"
 
-void put_script(window_data_t* p_data, GLuint id, void* p_script);
-void* get_script(window_data_t* p_data, GLuint id);
-void delete_script(window_data_t* p_data, GLuint id);
-void delete_all(window_data_t* p_data);
+void  put_script(driver_data_t* p_data, GLuint id, void* p_script);
+void* get_script(driver_data_t* p_data, GLuint id);
+void  delete_script(driver_data_t* p_data, GLuint id);
+void  delete_all(driver_data_t* p_data);
 
-void run_script(GLuint script_id, window_data_t* p_data);
+void run_script(GLuint script_id, driver_data_t* p_data);
 
 #endif

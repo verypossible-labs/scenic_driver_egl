@@ -4,11 +4,11 @@
 #
 # a collection of functions for handling messages from the port
 #
-defmodule Scenic.Driver.Glfw.Input do
+defmodule ScenicDriverEGL.Input do
   use Bitwise
 
-  alias Scenic.Driver.Glfw.Cache
-  alias Scenic.Driver.Glfw.Font
+  alias ScenicDriverEGL.Cache
+  alias ScenicDriverEGL.Font
   alias Scenic.ViewPort
   alias Scenic.Utilities
 
@@ -118,7 +118,7 @@ defmodule Scenic.Driver.Glfw.Input do
       |> Map.put(:end_dl, start_dl + dl_block_size - 1)
       |> Map.put(:last_used_dl, start_dl)
 
-    # |> Glfw.Font.initialize()
+    # |> ScenicDriverEGL.Font.initialize()
 
     GenServer.cast(viewport, {:driver_ready, self()})
 
@@ -370,7 +370,7 @@ defmodule Scenic.Driver.Glfw.Input do
   # use the text/char helpers instead
 
   # key codes use the standards defined by Glfw
-  # http://www.Glfw.org/docs/latest/group__keys.html
+  # http://www.ScenicDriverEGL.org/docs/latest/group__keys.html
 
   # --------------------------------------------------------
   defp key_to_name(key_code)
@@ -469,7 +469,7 @@ defmodule Scenic.Driver.Glfw.Input do
 
   # --------------------------------------------------------
   # defined to follow the Glfw modifier keys
-  # http://www.Glfw.org/docs/latest/group__mods.html
+  # http://www.ScenicDriverEGL.org/docs/latest/group__mods.html
 
   #  @key_mod_shift    0x0001
   #  @key_mod_control  0x0002
@@ -484,7 +484,7 @@ defmodule Scenic.Driver.Glfw.Input do
   #
   #  defp mods_to_atoms( key_mods )
   #  defp mods_to_atoms( key_mods ) when is_integer(key_mods) do
-  #    Enum.reduce(@key_mods, [], fn({mask,mod_atom}, acc) -> 
+  #    Enum.reduce(@key_mods, [], fn({mask,mod_atom}, acc) ->
   #        case Bitwise.band(mask, key_mods) do
   #          0 -> acc
   #          _ -> [mod_atom | acc]

@@ -4,8 +4,8 @@
 #
 # a collection of functions for handling port specific messages
 #
-defmodule Scenic.Driver.Glfw.Port do
-  #  alias Scenic.Driver.Glfw
+defmodule ScenicDriverEGL.Port do
+  #  alias ScenicDriverEGL
 
   @msg_stats_id 0x01
 
@@ -70,7 +70,7 @@ defmodule Scenic.Driver.Glfw.Port do
   #       dl_id :: unsigned-integer-size(32)-native,
   #     >> }} ->
   #       {:ok, dl_id}
-  #   after 
+  #   after
   #     timeout -> {:err, :timeout}
   #   end
   # end
@@ -128,7 +128,7 @@ defmodule Scenic.Driver.Glfw.Port do
   #       tx_id :: unsigned-integer-size(32)-native,
   #     >> }} ->
   #       {:ok, tx_id}
-  #   after 
+  #   after
   #     timeout -> {:err, :timeout}
   #   end
   # end

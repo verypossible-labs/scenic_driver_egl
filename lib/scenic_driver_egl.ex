@@ -4,7 +4,7 @@
 #
 #  sends data to a Glfw port app
 #
-defmodule Scenic.Driver.Glfw do
+defmodule ScenicDriverEGL do
   @moduledoc """
 
   """
@@ -12,22 +12,15 @@ defmodule Scenic.Driver.Glfw do
   use Scenic.ViewPort.Driver
   alias Scenic.Cache
 
-  alias Scenic.Driver.Glfw
-
   # import IEx
 
   require Logger
 
-  @port '/' ++ to_charlist(Mix.env()) ++ '/scenic_driver_glfw'
+  @port '/' ++ to_charlist(Mix.env()) ++ '/scenic_driver_egl'
 
-  @default_title "Driver Glfw"
-  @default_resizeable false
-
-  @default_block_size 512
-
+  @default_block_size 128
+  @default_debug false
   @default_clear_color {0, 0, 0, 0xFF}
-
-  @default_sync 15
 
   # ============================================================================
   # client callable api
@@ -51,32 +44,20 @@ defmodule Scenic.Driver.Glfw do
   # startup
 
   def init(viewport, {width, height}, config) do
-    title =
-      cond do
-        is_bitstring(config[:title]) -> config[:title]
-        true -> @default_title
-      end
-
-    resizeable =
-      cond do
-        is_boolean(config[:resizeable]) -> config[:resizeable]
-        true -> @default_resizeable
-      end
-
-    sync_interval =
-      cond do
-        is_integer(config[:sync]) -> config[:sync]
-        true -> @default_sync
-      end
-
     dl_block_size =
       cond do
         is_integer(config[:block_size]) -> config[:block_size]
         true -> @default_block_size
       end
 
-    port_args =
-      to_charlist(" #{width} #{height} #{inspect(title)} #{resizeable} #{dl_block_size}")
+    debug_mode =
+      case config[:debug] do
+        true -> 1
+        false -> 0
+        _ -> @default_debug
+      end
+
+    port_args = to_charlist(" #{dl_block_size} #{debug_mode}")
 
     # request put and delete notifications from the cache
     Cache.Static.Font.subscribe(:all)
@@ -84,7 +65,7 @@ defmodule Scenic.Driver.Glfw do
 
     # open and initialize the window
     Process.flag(:trap_exit, true)
-    executable = :code.priv_dir(:scenic_driver_glfw) ++ @port ++ port_args
+    executable = :code.priv_dir(:scenic_driver_egl) ++ @port ++ port_args
     port = Port.open({:spawn, executable}, [:binary, {:packet, 4}])
 
     state = %{
@@ -104,7 +85,6 @@ defmodule Scenic.Driver.Glfw do
       textures: %{},
       fonts: %{},
       dirty_graphs: [],
-      sync_interval: sync_interval,
       draw_busy: false,
       pending_flush: false,
       currently_drawing: [],
@@ -126,17 +106,17 @@ defmodule Scenic.Driver.Glfw do
 
   # --------------------------------------------------------
   def handle_call(msg, from, state) do
-    Glfw.Port.handle_call(msg, from, state)
+    ScenicDriverEGL.Port.handle_call(msg, from, state)
   end
 
   # --------------------------------------------------------
   # %{ready: true} =
   def handle_cast(msg, state) do
     msg
-    |> do_handle(&Glfw.Graph.handle_cast(&1, state))
-    |> do_handle(&Glfw.Cache.handle_cast(&1, state))
-    |> do_handle(&Glfw.Port.handle_cast(&1, state))
-    # |> do_handle( &Glfw.Font.handle_cast( &1, state ) )
+    |> do_handle(&ScenicDriverEGL.Graph.handle_cast(&1, state))
+    |> do_handle(&ScenicDriverEGL.Cache.handle_cast(&1, state))
+    |> do_handle(&ScenicDriverEGL.Port.handle_cast(&1, state))
+    # |> do_handle( &ScenicDriverEGL.Font.handle_cast( &1, state ) )
     |> case do
       {:noreply, state} ->
         {:noreply, state}
@@ -157,18 +137,18 @@ defmodule Scenic.Driver.Glfw do
 
   # --------------------------------------------------------
   def handle_info(:flush_dirty, %{ready: true} = state) do
-    Glfw.Graph.handle_flush_dirty(state)
+    ScenicDriverEGL.Graph.handle_flush_dirty(state)
   end
 
   # --------------------------------------------------------
   def handle_info({:debounce, type}, %{ready: true} = state) do
-    Glfw.Input.handle_debounce(type, state)
+    ScenicDriverEGL.Input.handle_debounce(type, state)
   end
 
   # --------------------------------------------------------
   def handle_info({msg_port, {:data, msg}}, %{port: port} = state) when msg_port == port do
     msg
-    |> do_handle(&Glfw.Input.handle_port_message(&1, state))
+    |> do_handle(&ScenicDriverEGL.Input.handle_port_message(&1, state))
   end
 
   # deal with the app exiting normally

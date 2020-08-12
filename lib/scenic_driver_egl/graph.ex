@@ -3,12 +3,12 @@
 #  Copyright © 2018 Kry10 Industries. All rights reserved.
 #
 # a collection of functions for maintaining and drawing graphs. These could have
-# just as well been in Scenic.Driver.Glfw itself, but that was getting too long
+# just as well been in ScenicDriverEGL itself, but that was getting too long
 # and complicated
 #
-defmodule Scenic.Driver.Glfw.Graph do
-  alias Scenic.Driver.Glfw
-  alias Scenic.Driver.Glfw.Port
+defmodule ScenicDriverEGL.Graph do
+  alias ScenicDriverEGL
+  alias ScenicDriverEGL.Port
   alias Scenic.ViewPort
   alias Scenic.Primitive
   alias Scenic.Utilities
@@ -371,7 +371,7 @@ defmodule Scenic.Driver.Glfw.Graph do
           @cmd_render_graph::unsigned-integer-size(32)-native,
           dl_id::unsigned-integer-size(32)-native
         >>,
-        Glfw.Compile.graph(graph, graph_key, state)
+        ScenicDriverEGL.Compile.graph(graph, graph_key, state)
       ]
       |> Port.send(port)
     else

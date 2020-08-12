@@ -143,7 +143,7 @@ typedef unsigned char uint8_t;
 #define HASH_INITIAL_NUM_BUCKETS 32U /* initial number of buckets        */
 #define HASH_INITIAL_NUM_BUCKETS_LOG2                                          \
   5U                                 /* lg2 of initial number of buckets       \
-                                        */
+                                      */
 #define HASH_BKT_CAPACITY_THRESH 10U /* expand when bucket count reaches */
 
 /* calculate the element whose hash handle address is hhp */
@@ -254,7 +254,7 @@ typedef unsigned char uint8_t;
       (head)->hh.tbl->log2_num_buckets = HASH_INITIAL_NUM_BUCKETS_LOG2;          \
       (head)->hh.tbl->hho              = (char*) (&(head)->hh) - (char*) (head); \
       (head)->hh.tbl->buckets          = (UT_hash_bucket*) uthash_malloc(        \
-          HASH_INITIAL_NUM_BUCKETS * sizeof(struct UT_hash_bucket));             \
+          HASH_INITIAL_NUM_BUCKETS * sizeof(struct UT_hash_bucket));    \
       (head)->hh.tbl->signature = HASH_SIGNATURE;                                \
       if (!(head)->hh.tbl->buckets)                                              \
       {                                                                          \
@@ -418,9 +418,9 @@ typedef unsigned char uint8_t;
   do                                                                           \
   {                                                                            \
     IF_HASH_NONFATAL_OOM(int _ha_oomed = 0;)                                   \
-    (add)->hh.hashv                    = (hashval);                            \
-    (add)->hh.key                      = (char*) (keyptr);                     \
-    (add)->hh.keylen                   = (unsigned) (keylen_in);               \
+    (add)->hh.hashv  = (hashval);                                              \
+    (add)->hh.key    = (char*) (keyptr);                                       \
+    (add)->hh.keylen = (unsigned) (keylen_in);                                 \
     if (!(head))                                                               \
     {                                                                          \
       (add)->hh.next = NULL;                                                   \
@@ -479,9 +479,9 @@ typedef unsigned char uint8_t;
   do                                                                           \
   {                                                                            \
     IF_HASH_NONFATAL_OOM(int _ha_oomed = 0;)                                   \
-    (add)->hh.hashv                    = (hashval);                            \
-    (add)->hh.key                      = (char*) (keyptr);                     \
-    (add)->hh.keylen                   = (unsigned) (keylen_in);               \
+    (add)->hh.hashv  = (hashval);                                              \
+    (add)->hh.key    = (char*) (keyptr);                                       \
+    (add)->hh.keylen = (unsigned) (keylen_in);                                 \
     if (!(head))                                                               \
     {                                                                          \
       (add)->hh.next = NULL;                                                   \
@@ -557,8 +557,8 @@ typedef unsigned char uint8_t;
       }                                                                        \
       if (_hd_hh_del->prev != NULL)                                            \
       {                                                                        \
-        HH_FROM_ELMT((head)->hh.tbl, _hd_hh_del->prev)                         \
-            ->next = _hd_hh_del->next;                                         \
+        HH_FROM_ELMT((head)->hh.tbl, _hd_hh_del->prev)->next =                 \
+            _hd_hh_del->next;                                                  \
       }                                                                        \
       else                                                                     \
       {                                                                        \
@@ -566,8 +566,8 @@ typedef unsigned char uint8_t;
       }                                                                        \
       if (_hd_hh_del->next != NULL)                                            \
       {                                                                        \
-        HH_FROM_ELMT((head)->hh.tbl, _hd_hh_del->next)                         \
-            ->prev = _hd_hh_del->prev;                                         \
+        HH_FROM_ELMT((head)->hh.tbl, _hd_hh_del->next)->prev =                 \
+            _hd_hh_del->prev;                                                  \
       }                                                                        \
       HASH_TO_BKT(_hd_hh_del->hashv, (head)->hh.tbl->num_buckets, _hd_bkt);    \
       HASH_DEL_IN_BKT((head)->hh.tbl->buckets[_hd_bkt], _hd_hh_del);           \
