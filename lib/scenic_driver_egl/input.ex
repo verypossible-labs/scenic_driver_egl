@@ -5,6 +5,7 @@
 # a collection of functions for handling messages from the port
 #
 defmodule ScenicDriverEGL.Input do
+  @moduledoc false
   use Bitwise
 
   alias ScenicDriverEGL.Cache
@@ -104,7 +105,9 @@ defmodule ScenicDriverEGL.Input do
   def handle_port_message(
         <<
           @msg_ready_id::unsigned-integer-size(32)-native,
-          start_dl::integer-size(32)-native
+          start_dl::integer-size(32)-native,
+          width::unsigned-integer-size(32)-native,
+          height::unsigned-integer-size(32)-native
         >>,
         %{
           viewport: viewport,
@@ -117,10 +120,18 @@ defmodule ScenicDriverEGL.Input do
       |> Map.put(:start_dl, start_dl)
       |> Map.put(:end_dl, start_dl + dl_block_size - 1)
       |> Map.put(:last_used_dl, start_dl)
+      |> Map.put(:window, {width, height})
 
-    # |> ScenicDriverEGL.Font.initialize()
+    driver_data = %ViewPort.Driver.Info{
+      module: ScenicDriverEGL,
+      type: "Static Monitor",
+      width: width,
+      height: height,
+      pid: self()
+    }
 
     GenServer.cast(viewport, {:driver_ready, self()})
+    GenServer.cast(viewport, {:driver_register, driver_data})
 
     {:noreply, state}
   end
@@ -149,59 +160,25 @@ defmodule ScenicDriverEGL.Input do
   end
 
   # --------------------------------------------------------
-  def handle_port_message(
-        <<
-          @msg_reshape_id::unsigned-integer-size(32)-native,
-          window_width::unsigned-integer-size(32)-native,
-          window_height::unsigned-integer-size(32)-native,
-          frame_width::unsigned-integer-size(32)-native,
-          frame_height::unsigned-integer-size(32)-native
-        >>,
-        state
-      ) do
-    state =
-      state
-      |> Map.put(:window, {window_width, window_height})
-      |> Map.put(:frame, {frame_width, frame_height})
-      |> Map.put(:screen_factor, frame_width / window_width)
-
-    debounce_input({:viewport_reshape, {window_width, window_height}}, state)
-
-    {:noreply, state}
-  end
-
-  # --------------------------------------------------------
-  def handle_port_message(
-        <<@msg_close_id::unsigned-integer-size(32)-native>>,
-        %{viewport: viewport} = state
-      ) do
-    GenServer.cast(viewport, :user_close)
+  def handle_port_message(<<@msg_close_id::unsigned-integer-size(32)-native>>, state) do
+    GenServer.cast(self(), :close)
     {:noreply, Map.put(state, :closing, true)}
   end
 
   # --------------------------------------------------------
-  def handle_port_message(
-        <<@msg_puts_id::unsigned-integer-size(32)-native>> <> msg,
-        state
-      ) do
+  def handle_port_message(<<@msg_puts_id::unsigned-integer-size(32)-native>> <> msg, state) do
     IO.puts(msg)
     {:noreply, state}
   end
 
   # --------------------------------------------------------
-  def handle_port_message(
-        <<@msg_write_id::unsigned-integer-size(32)-native>> <> msg,
-        state
-      ) do
+  def handle_port_message(<<@msg_write_id::unsigned-integer-size(32)-native>> <> msg, state) do
     IO.write(msg)
     {:noreply, state}
   end
 
   # --------------------------------------------------------
-  def handle_port_message(
-        <<@msg_inspect_id::unsigned-integer-size(32)-native>> <> msg,
-        state
-      ) do
+  def handle_port_message(<<@msg_inspect_id::unsigned-integer-size(32)-native>> <> msg, state) do
     IO.inspect(msg)
     {:noreply, state}
   end
@@ -241,13 +218,9 @@ defmodule ScenicDriverEGL.Input do
 
   # --------------------------------------------------------
   def handle_port_message(
-        <<
-          @msg_key_id::unsigned-integer-size(32)-native,
-          key::unsigned-integer-native-size(32),
-          _scancode::unsigned-integer-native-size(32),
-          action::unsigned-integer-native-size(32),
-          mods::unsigned-integer-native-size(32)
-        >>,
+        <<@msg_key_id::unsigned-integer-size(32)-native, key::unsigned-integer-native-size(32),
+          _scancode::unsigned-integer-native-size(32), action::unsigned-integer-native-size(32),
+          mods::unsigned-integer-native-size(32)>>,
         %{viewport: viewport} = state
       ) do
     key = key_to_name(key)
@@ -260,11 +233,8 @@ defmodule ScenicDriverEGL.Input do
 
   # --------------------------------------------------------
   def handle_port_message(
-        <<
-          @msg_char_id::unsigned-integer-size(32)-native,
-          codepoint::unsigned-integer-native-size(32),
-          mods::unsigned-integer-native-size(32)
-        >>,
+        <<@msg_char_id::unsigned-integer-size(32)-native,
+          codepoint::unsigned-integer-native-size(32), mods::unsigned-integer-native-size(32)>>,
         %{viewport: viewport} = state
       ) do
     codepoint = codepoint_to_char(codepoint)
@@ -276,11 +246,8 @@ defmodule ScenicDriverEGL.Input do
 
   # --------------------------------------------------------
   def handle_port_message(
-        <<
-          @msg_cursor_pos_id::unsigned-integer-size(32)-native,
-          x::float-native-size(32),
-          y::float-native-size(32)
-        >>,
+        <<@msg_cursor_pos_id::unsigned-integer-size(32)-native, x::float-native-size(32),
+          y::float-native-size(32)>>,
         state
       ) do
     debounce_input({:cursor_pos, {x, y}}, state)
@@ -288,14 +255,10 @@ defmodule ScenicDriverEGL.Input do
 
   # --------------------------------------------------------
   def handle_port_message(
-        <<
-          @msg_mouse_button_id::unsigned-integer-size(32)-native,
-          button::unsigned-integer-native-size(32),
-          action::unsigned-integer-native-size(32),
-          mods::unsigned-integer-native-size(32),
-          x::float-native-size(32),
-          y::float-native-size(32)
-        >>,
+        <<@msg_mouse_button_id::unsigned-integer-size(32)-native,
+          button::unsigned-integer-native-size(32), action::unsigned-integer-native-size(32),
+          mods::unsigned-integer-native-size(32), x::float-native-size(32),
+          y::float-native-size(32)>>,
         %{viewport: viewport} = state
       ) do
     button = button_to_atom(button)
@@ -308,13 +271,9 @@ defmodule ScenicDriverEGL.Input do
 
   # --------------------------------------------------------
   def handle_port_message(
-        <<
-          @msg_mouse_scroll_id::unsigned-integer-size(32)-native,
-          x_offset::float-native-size(32),
-          y_offset::float-native-size(32),
-          x_pos::float-native-size(32),
-          y_pos::float-native-size(32)
-        >>,
+        <<@msg_mouse_scroll_id::unsigned-integer-size(32)-native, x_offset::float-native-size(32),
+          y_offset::float-native-size(32), x_pos::float-native-size(32),
+          y_pos::float-native-size(32)>>,
         state
       ) do
     debounce_input({:cursor_scroll, {{x_offset, y_offset}, {x_pos, y_pos}}}, state)
@@ -324,12 +283,8 @@ defmodule ScenicDriverEGL.Input do
 
   # --------------------------------------------------------
   def handle_port_message(
-        <<
-          @msg_cursor_enter_id::unsigned-integer-size(32)-native,
-          0::integer-native-size(32),
-          x_pos::float-native-size(32),
-          y_pos::float-native-size(32)
-        >>,
+        <<@msg_cursor_enter_id::unsigned-integer-size(32)-native, 0::integer-native-size(32),
+          x_pos::float-native-size(32), y_pos::float-native-size(32)>>,
         %{viewport: viewport} = state
       ) do
     ViewPort.input(viewport, {:viewport_exit, {x_pos, y_pos}})
@@ -339,12 +294,8 @@ defmodule ScenicDriverEGL.Input do
 
   # --------------------------------------------------------
   def handle_port_message(
-        <<
-          @msg_cursor_enter_id::unsigned-integer-size(32)-native,
-          1::integer-native-size(32),
-          x_pos::float-native-size(32),
-          y_pos::float-native-size(32)
-        >>,
+        <<@msg_cursor_enter_id::unsigned-integer-size(32)-native, 1::integer-native-size(32),
+          x_pos::float-native-size(32), y_pos::float-native-size(32)>>,
         %{viewport: viewport} = state
       ) do
     ViewPort.input(viewport, {:viewport_enter, {x_pos, y_pos}})
@@ -353,24 +304,27 @@ defmodule ScenicDriverEGL.Input do
   end
 
   # --------------------------------------------------------
-  def handle_port_message(
-        <<id::unsigned-integer-size(32)-native, bin::binary>>,
-        state
-      ) do
+  def handle_port_message(<<id::unsigned-integer-size(32)-native, bin::binary>>, state) do
     IO.puts("Unhandled port messages id: #{id}, msg: #{inspect(bin)}")
     {:noreply, state}
   end
 
+  # --------------------------------------------------------
+  def handle_port_message(_other, state) do
+    # pry()
+    {:noreply, state}
+  end
+
   # ============================================================================
-  # utilities to translate Glfw input to standardized input
+  # utilities to translate Mac input to standardized input
 
   # ============================================================================
   # keyboard input helpers
   # these are for reading the keyboard directly. If you are trying to do text input
   # use the text/char helpers instead
 
-  # key codes use the standards defined by Glfw
-  # http://www.ScenicDriverEGL.org/docs/latest/group__keys.html
+  # key codes use the standards defined by Mac
+  # http://www.Rpi.org/docs/latest/group__keys.html
 
   # --------------------------------------------------------
   defp key_to_name(key_code)
@@ -463,13 +417,12 @@ defmodule ScenicDriverEGL.Input do
   defp key_to_name(348), do: "menu"
 
   defp key_to_name(key) do
-    IO.puts("Driver.Glfw recieved unknown input key value: #{inspect(key)}")
-    "unknown"
+    raise "Driver.Rpi recieved unknown input key value: #{inspect(key)}"
   end
 
   # --------------------------------------------------------
-  # defined to follow the Glfw modifier keys
-  # http://www.ScenicDriverEGL.org/docs/latest/group__mods.html
+  # defined to follow the Mac modifier keys
+  # http://www.Rpi.org/docs/latest/group__mods.html
 
   #  @key_mod_shift    0x0001
   #  @key_mod_control  0x0002
@@ -492,7 +445,7 @@ defmodule ScenicDriverEGL.Input do
   #    end)
   #  end
   #  defp mods_to_atoms( mods ) do
-  #    raise "Driver.Glfw recieved unknown mods: #{inspect(mods)}"
+  #    raise "Driver.Rpi recieved unknown mods: #{inspect(mods)}"
   #  end
 
   # --------------------------------------------------------

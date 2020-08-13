@@ -26,7 +26,7 @@ defmodule ScenicDriverEGL.Font do
 
       _ ->
         font_folder =
-          :code.priv_dir(:scenic_driver_glfw)
+          :code.priv_dir(:scenic_driver_egl)
           |> Path.join(@font_folder)
 
         with {:ok, ^hash} <- Cache.Static.Font.load(font_folder, hash),

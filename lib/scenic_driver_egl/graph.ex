@@ -3,11 +3,12 @@
 #  Copyright © 2018 Kry10 Industries. All rights reserved.
 #
 # a collection of functions for maintaining and drawing graphs. These could have
-# just as well been in ScenicDriverEGL itself, but that was getting too long
+# just as well been in Scenic.Driver.Driver itself, but that was getting too long
 # and complicated
 #
 defmodule ScenicDriverEGL.Graph do
-  alias ScenicDriverEGL
+  @moduledoc false
+  alias ScenicDriverEGL, as: Driver
   alias ScenicDriverEGL.Port
   alias Scenic.ViewPort
   alias Scenic.Primitive
@@ -66,11 +67,11 @@ defmodule ScenicDriverEGL.Graph do
   def handle_cast(
         :update_clear_color,
         %{port: port, master_ref: master_graph_key, clear_color: old_clear_color} = state
-      ) do
+    ) do
     with {:ok, master_graph} <- ViewPort.Tables.get_graph(master_graph_key),
-         {:ok, %{data: {Primitive.SceneRef, root_key}}} <- Map.fetch(master_graph, 1),
-         {:ok, graph} <- ViewPort.Tables.get_graph(root_key) do
-      root_group = graph[0]
+           {:ok, %{data: {Primitive.SceneRef, root_key}}} <- Map.fetch(master_graph, 1),
+           {:ok, graph} <- ViewPort.Tables.get_graph(root_key) do
+        root_group = graph[0]
 
       clear_color =
         (root_group
@@ -110,7 +111,7 @@ defmodule ScenicDriverEGL.Graph do
           ready: true
         } = state
       ) do
-    # Logger.warn "Glfw set_root #{inspect(graph_key)}"
+    # Logger.warn "Driver set_root #{inspect(graph_key)}"
 
     state = Map.put(state, :master_ref, graph_key)
 
@@ -227,7 +228,6 @@ defmodule ScenicDriverEGL.Graph do
   end
 
   defp render_graphs([], state, _), do: state
-
   defp render_graphs(
          keys,
          %{
@@ -237,7 +237,6 @@ defmodule ScenicDriverEGL.Graph do
        )
        when is_list(keys) do
     keys = Enum.uniq(keys)
-
     # first, scan the graphs and ensure that dl_ids are properly assigned
     {state, ids} =
       Enum.reduce(keys, {state, []}, fn key, {s, ids} ->
@@ -262,7 +261,6 @@ defmodule ScenicDriverEGL.Graph do
       Enum.each(keys, &render_one_graph(driver, &1, state))
       if root_id, do: Port.set_root_dl(port, root_id)
     end)
-
     # IO.puts "RENDER #{inspect(ids, charlists: :as_lists)}"
     %{state | currently_drawing: ids, draw_busy: true}
   end
@@ -340,7 +338,7 @@ defmodule ScenicDriverEGL.Graph do
   defp get_dl_id({:graph, _, _} = key, %{dl_map: dl_map}) do
     dl_map[key]
   end
-
+require Logger
   # --------------------------------------------------------
   # render_one_graph renders one graph out to the C port.
   # It uses data in state but doesn't transform it
@@ -354,13 +352,12 @@ defmodule ScenicDriverEGL.Graph do
          } = state
        ) do
     dl_id = dl_map[graph_key]
-
     with {:ok, graph} <- ViewPort.Tables.get_graph(graph_key) do
       # if this is the root, check if it has a clear_color set on it.
       with {:ok, master_graph} <- ViewPort.Tables.get_graph(master_graph_key),
-           {Primitive.SceneRef, root_ref} <- get_in(master_graph, [1, :data]),
-           true <- graph_key == root_ref do
-        GenServer.cast(driver, :update_clear_color)
+             {Primitive.SceneRef, root_ref} <- get_in(master_graph, [1, :data]),
+             true <- graph_key == root_ref do
+          GenServer.cast(driver, :update_clear_color)
       end
 
       # hack the driver into the state map
@@ -371,7 +368,7 @@ defmodule ScenicDriverEGL.Graph do
           @cmd_render_graph::unsigned-integer-size(32)-native,
           dl_id::unsigned-integer-size(32)-native
         >>,
-        ScenicDriverEGL.Compile.graph(graph, graph_key, state)
+        Driver.Compile.graph(graph, graph_key, state)
       ]
       |> Port.send(port)
     else

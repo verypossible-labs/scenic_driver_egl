@@ -22,6 +22,8 @@ defmodule ScenicDriverEGL do
   @default_debug false
   @default_clear_color {0, 0, 0, 0xFF}
 
+  @default_sync 32
+
   # ============================================================================
   # client callable api
 
@@ -48,6 +50,12 @@ defmodule ScenicDriverEGL do
       cond do
         is_integer(config[:block_size]) -> config[:block_size]
         true -> @default_block_size
+      end
+
+    sync_interval =
+      cond do
+        is_integer(config[:sync]) -> config[:sync]
+        true -> @default_sync
       end
 
     debug_mode =
@@ -85,6 +93,7 @@ defmodule ScenicDriverEGL do
       textures: %{},
       fonts: %{},
       dirty_graphs: [],
+      sync_interval: sync_interval,
       draw_busy: false,
       pending_flush: false,
       currently_drawing: [],
