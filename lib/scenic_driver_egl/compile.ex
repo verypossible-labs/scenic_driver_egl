@@ -8,6 +8,7 @@
 #
 
 defmodule ScenicDriverEGL.Compile do
+  @moduledoc false
   alias Scenic.Primitive
 
   require Logger
@@ -28,6 +29,8 @@ defmodule ScenicDriverEGL.Compile do
   @op_paint_radial 0x08
   @op_paint_image 0x09
   @op_paint_dynamic 0x0A
+
+  # @op_anti_alias              0x0A
 
   @op_stroke_width 0x0C
   @op_stroke_color 0x0D

@@ -5,7 +5,7 @@
 # a collection of functions for handling port specific messages
 #
 defmodule ScenicDriverEGL.Port do
-  #  alias ScenicDriverEGL
+  @moduledoc false
 
   @msg_stats_id 0x01
 
@@ -50,6 +50,8 @@ defmodule ScenicDriverEGL.Port do
   # send a message to the port. Not documented as it should be called by the other
   # functions, which prepare data for it.
   @doc false
+
+  require Logger
   def send(msg, port) do
     try do
       Port.command(port, msg)
@@ -165,8 +167,7 @@ defmodule ScenicDriverEGL.Port do
          {:data,
           <<@msg_stats_id::size(8), input_flags::unsigned-integer-native-size(32),
             x_pos::integer-native-size(32), y_pos::integer-native-size(32),
-            width::integer-native-size(32), height::integer-native-size(32), focused::size(8),
-            resizable::size(8), iconified::size(8), maximized::size(8), visible::size(8)>>}} ->
+            width::integer-native-size(32), height::integer-native-size(32)>>}} ->
           {:ok,
            %{
              input_flags: input_flags,
@@ -174,11 +175,6 @@ defmodule ScenicDriverEGL.Port do
              y_pos: y_pos,
              width: width,
              height: height,
-             focused: focused != 0,
-             resizable: resizable != 0,
-             iconified: iconified != 0,
-             maximized: maximized != 0,
-             visible: visible != 0,
              pid: self(),
              module: __MODULE__
            }}

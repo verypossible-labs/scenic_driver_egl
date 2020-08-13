@@ -3,11 +3,12 @@
 #  Copyright © 2018 Kry10 Industries. All rights reserved.
 #
 # a collection of functions for maintaining and drawing graphs. These could have
-# just as well been in ScenicDriverEGL itself, but that was getting too long
+# just as well been in Scenic.Driver.Driver itself, but that was getting too long
 # and complicated
 #
 defmodule ScenicDriverEGL.Cache do
-  alias ScenicDriverEGL
+  @moduledoc false
+  alias ScenicDriverEGL, as: Driver
   alias Scenic.Cache.Static
   alias Scenic.Cache.Dynamic
 
@@ -35,7 +36,7 @@ defmodule ScenicDriverEGL.Cache do
       key::binary,
       0::size(8)
     >>
-    |> ScenicDriverEGL.Port.send(port)
+    |> Driver.Port.send(port)
 
     {:noreply, state}
   end
@@ -57,7 +58,7 @@ defmodule ScenicDriverEGL.Cache do
       key::binary,
       0::size(8)
     >>
-    |> ScenicDriverEGL.Port.send(port)
+    |> Driver.Port.send(port)
 
     {:noreply, state}
   end
@@ -82,7 +83,7 @@ defmodule ScenicDriverEGL.Cache do
         0::size(8),
         data::binary
       >>
-      |> ScenicDriverEGL.Port.send(port)
+      |> Driver.Port.send(port)
     else
       err -> IO.inspect(err, label: "load_static_texture")
     end
@@ -110,7 +111,7 @@ defmodule ScenicDriverEGL.Cache do
         0::size(8),
         pixels::binary
       >>
-      |> ScenicDriverEGL.Port.send(port)
+      |> Driver.Port.send(port)
     else
       err -> IO.inspect(err, label: "load_dynamic_texture")
     end

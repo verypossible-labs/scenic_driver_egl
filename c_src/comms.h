@@ -7,6 +7,8 @@
 #ifndef COMMS_HEADER
 #define COMMS_HEADER
 
+#include "types.h"
+
 #ifndef bool
 #include <stdbool.h>
 #endif

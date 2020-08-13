@@ -13,7 +13,7 @@ ifeq ($(MIX_ENV),dev)
 	CFLAGS += -g
 endif
 
-CFLAGS += -fPIC -I/usr/include/drm
+CFLAGS += -fPIC -I$(NERVES_SDK_SYSROOT)/usr/include/drm
 LDFLAGS += -lGLESv2 -lm -lrt -ldl -lEGL -lgbm -ldrm
 
 .PHONY: all clean
@@ -22,7 +22,7 @@ all: $(PREFIX)/$(MIX_ENV)/scenic_driver_egl
 # fonts
 
 SRCS = c_src/main.c c_src/comms.c c_src/nanovg/nanovg.c \
-	c_src/utils.c c_src/render_script.c c_src/tx.c c_src/drm-common.c c_src/common.c c_src/drm-legacy.c
+	c_src/utils.c c_src/render_script.c c_src/tx.c
 
 $(PREFIX)/$(MIX_ENV)/scenic_driver_egl: $(SRCS)
 	mkdir -p $(PREFIX)/$(MIX_ENV)
