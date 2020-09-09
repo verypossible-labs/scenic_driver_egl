@@ -605,8 +605,8 @@ int main(int argc, char** argv)
   // super simple arg check
   if ( argc != 3 ) {
     send_puts("Argument check failed!");
-    fprintf(stderr, "\r\nscenic_driver_egl should be launched via the ScenicDriverEGL
-    library.\r\n\r\n"); return 0;
+    fprintf(stderr, "\r\nscenic_driver_egl should be launched via the ScenicDriverEGL library.\r\n\r\n");
+    return 0;
   }
   int num_scripts = atoi(argv[1]);
   int debug_mode  = atoi(argv[2]);
