@@ -34,6 +34,7 @@
 #define MSG_OUT_PUTS 0x02
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 #define MAX_DISPLAYS 	(4)
+#define MAX_BUFFERS 	(4)
 
 uint8_t DISP_ID = 0;
 uint8_t all_display = 0;
@@ -48,12 +49,14 @@ typedef struct
 	EGLSurface surface;
   int         screen_width;
   int         screen_height;
+  int         frame_idx;
   NVGcontext* p_ctx;
 } egl_data_t;
 
 static struct {
 	struct gbm_device *dev;
 	struct gbm_surface *surface;
+  struct gbm_bo *bo[MAX_BUFFERS];
 } gbm;
 
 static struct {
@@ -66,6 +69,7 @@ static struct {
 	uint32_t format[MAX_DISPLAYS];
 	drmModeModeInfo *mode[MAX_DISPLAYS];
 	drmModeConnector *connectors[MAX_DISPLAYS];
+  struct drm_fb *fb[MAX_BUFFERS];
 } drm;
 
 struct drm_fb {
@@ -597,8 +601,6 @@ int main(int argc, char** argv)
 	};
 
   int ret;
-  struct gbm_bo *bo;
-	struct drm_fb *fb;
 
   test_endian();
 
@@ -647,14 +649,18 @@ int main(int argc, char** argv)
   data.screen_width  = egl_data.screen_width;
   data.screen_height = egl_data.screen_height;
 
+  egl_data.frame_idx = 0;
+
   // test_draw(&egl_data);
   // glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 	eglSwapBuffers(egl_data.display, egl_data.surface);
-	bo = gbm_surface_lock_front_buffer(gbm.surface);
-	fb = drm_fb_get_from_bo(bo);
-
-  ret = drmModeSetCrtc(drm.fd, drm.crtc_id[DISP_ID], fb->fb_id,
+  struct gbm_bo *bo = gbm_surface_lock_front_buffer(gbm.surface);
+  fprintf(stderr, "Got buffer");
+	gbm.bo[egl_data.frame_idx] = bo;
+  fprintf(stderr, "Set buffer");
+	drm.fb[egl_data.frame_idx] = drm_fb_get_from_bo(bo);
+  ret = drmModeSetCrtc(drm.fd, drm.crtc_id[DISP_ID], drm.fb[egl_data.frame_idx]->fb_id,
 				0, 0, &drm.connector_id[DISP_ID], 1, drm.mode[DISP_ID]);
 		if (ret) {
 			printf("display %d failed to set mode: %s\n", DISP_ID, strerror(errno));
@@ -667,16 +673,21 @@ int main(int argc, char** argv)
   /* Loop until the calling app closes the window */
   while (data.keep_going && !isCallerDown())
   {
-    struct gbm_bo *next_bo;
 		int waiting_for_flip;
 		int cc;
+    int next_idx;
+    if (egl_data.frame_idx == (MAX_BUFFERS - 1)) {
+        next_idx = 0;
+      } else {
+        next_idx = egl_data.frame_idx + 1;
+      }
 
     // check for incoming messages - blocks with a timeout
     if (handle_stdio_in(&data))
     {
 
       // clear the buffer
-      glClear(GL_COLOR_BUFFER_BIT);
+      glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
       // render the scene
       nvgBeginFrame(egl_data.p_ctx, egl_data.screen_width,
@@ -686,40 +697,52 @@ int main(int argc, char** argv)
       {
         run_script(data.root_script, &data);
       }
+      // test_draw(&egl_data);
 
       nvgEndFrame(data.p_ctx);
 
       // Swap front and back buffers
       eglSwapBuffers(egl_data.display, egl_data.surface);
 
-      next_bo = gbm_surface_lock_front_buffer(gbm.surface);
-		  fb = drm_fb_get_from_bo(next_bo);
+      gbm.bo[next_idx] = gbm_surface_lock_front_buffer(gbm.surface);
+		  // drm.fb[next_idx] = drm_fb_get_from_bo(gbm.bo[next_idx]);
+      // ret = drmModeSetCrtc(drm.fd, drm.crtc_id[DISP_ID], drm.fb[next_idx]->fb_id,
+			// 	0, 0, &drm.connector_id[DISP_ID], 1, drm.mode[DISP_ID]);
+      // if (ret) {
+      //   printf("display %d failed to set mode: %s\n", DISP_ID, strerror(errno));
+      //   return ret;
+      // }
+      // fprintf(stderr, "Frame: %d", egl_data.frame_idx);
 
-      ret = drmModePageFlip(drm.fd, drm.crtc_id[DISP_ID], fb->fb_id,
-          DRM_MODE_PAGE_FLIP_EVENT, &waiting_for_flip);
-      if (ret) {
-        fprintf(stderr, "failed to queue page flip: %s\n", strerror(errno));
-        return -1;
+      // fprintf(stderr, "prepare to flip");
+      // ret = drmModePageFlip(drm.fd, drm.crtc_id[DISP_ID], drm.fb[next_idx]->fb_id,
+      //     DRM_MODE_PAGE_FLIP_EVENT, &waiting_for_flip);
+      // if (ret) {
+      //   fprintf(stderr, "failed to queue page flip: %s\n", strerror(errno));
+      //   return -1;
+      // }
+      // waiting_for_flip = 1;
+
+      // while (waiting_for_flip) {
+      //   ret = select(drm.fd + 1, &fds, NULL, NULL, NULL);
+      //   if (ret < 0) {
+      //     fprintf(stderr, "select err: %s\n", strerror(errno));
+      //     return ret;
+      //   } else if (ret == 0) {
+      //     fprintf(stderr, "select timeout!\n");
+      //     return -1;
+      //   } else if (FD_ISSET(0, &fds)) {
+      //     continue;
+      //   }
+      //   drmHandleEvent(drm.fd, &evctx);
+      // }
+
+      if (gbm.bo[egl_data.frame_idx]) {
+        // fprintf(stderr, "Trying to release");
+        gbm_surface_release_buffer(gbm.surface, gbm.bo[egl_data.frame_idx]);
       }
-      waiting_for_flip = 1;
-
-      while (waiting_for_flip) {
-        ret = select(drm.fd + 1, &fds, NULL, NULL, NULL);
-        if (ret < 0) {
-          fprintf(stderr, "select err: %s\n", strerror(errno));
-          return ret;
-        } else if (ret == 0) {
-          fprintf(stderr, "select timeout!\n");
-          return -1;
-        } else if (FD_ISSET(0, &fds)) {
-          continue;
-        }
-        drmHandleEvent(drm.fd, &evctx);
-      }
-
-      /* release last buffer to render on again: */
-      gbm_surface_release_buffer(gbm.surface, bo);
-      bo = next_bo;
+      egl_data.frame_idx = next_idx;
+      // fprintf(stderr, "Done rendering");
     }
   }
   return 0;

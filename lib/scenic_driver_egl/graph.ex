@@ -67,11 +67,11 @@ defmodule ScenicDriverEGL.Graph do
   def handle_cast(
         :update_clear_color,
         %{port: port, master_ref: master_graph_key, clear_color: old_clear_color} = state
-    ) do
+      ) do
     with {:ok, master_graph} <- ViewPort.Tables.get_graph(master_graph_key),
-           {:ok, %{data: {Primitive.SceneRef, root_key}}} <- Map.fetch(master_graph, 1),
-           {:ok, graph} <- ViewPort.Tables.get_graph(root_key) do
-        root_group = graph[0]
+         {:ok, %{data: {Primitive.SceneRef, root_key}}} <- Map.fetch(master_graph, 1),
+         {:ok, graph} <- ViewPort.Tables.get_graph(root_key) do
+      root_group = graph[0]
 
       clear_color =
         (root_group
@@ -228,6 +228,7 @@ defmodule ScenicDriverEGL.Graph do
   end
 
   defp render_graphs([], state, _), do: state
+
   defp render_graphs(
          keys,
          %{
@@ -261,6 +262,7 @@ defmodule ScenicDriverEGL.Graph do
       Enum.each(keys, &render_one_graph(driver, &1, state))
       if root_id, do: Port.set_root_dl(port, root_id)
     end)
+
     # IO.puts "RENDER #{inspect(ids, charlists: :as_lists)}"
     %{state | currently_drawing: ids, draw_busy: true}
   end
@@ -338,7 +340,8 @@ defmodule ScenicDriverEGL.Graph do
   defp get_dl_id({:graph, _, _} = key, %{dl_map: dl_map}) do
     dl_map[key]
   end
-require Logger
+
+  require Logger
   # --------------------------------------------------------
   # render_one_graph renders one graph out to the C port.
   # It uses data in state but doesn't transform it
@@ -352,12 +355,13 @@ require Logger
          } = state
        ) do
     dl_id = dl_map[graph_key]
+
     with {:ok, graph} <- ViewPort.Tables.get_graph(graph_key) do
       # if this is the root, check if it has a clear_color set on it.
       with {:ok, master_graph} <- ViewPort.Tables.get_graph(master_graph_key),
-             {Primitive.SceneRef, root_ref} <- get_in(master_graph, [1, :data]),
-             true <- graph_key == root_ref do
-          GenServer.cast(driver, :update_clear_color)
+           {Primitive.SceneRef, root_ref} <- get_in(master_graph, [1, :data]),
+           true <- graph_key == root_ref do
+        GenServer.cast(driver, :update_clear_color)
       end
 
       # hack the driver into the state map

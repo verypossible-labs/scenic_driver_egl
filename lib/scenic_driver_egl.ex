@@ -22,7 +22,7 @@ defmodule ScenicDriverEGL do
   @default_debug false
   @default_clear_color {0, 0, 0, 0xFF}
 
-  @default_sync 32
+  @default_sync 8
 
   # ============================================================================
   # client callable api
