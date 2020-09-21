@@ -323,9 +323,6 @@ defmodule ScenicDriverEGL.Input do
   # these are for reading the keyboard directly. If you are trying to do text input
   # use the text/char helpers instead
 
-  # key codes use the standards defined by Mac
-  # http://www.Rpi.org/docs/latest/group__keys.html
-
   # --------------------------------------------------------
   defp key_to_name(key_code)
 
@@ -417,12 +414,11 @@ defmodule ScenicDriverEGL.Input do
   defp key_to_name(348), do: "menu"
 
   defp key_to_name(key) do
-    raise "Driver.Rpi recieved unknown input key value: #{inspect(key)}"
+    raise "ScenicDriverEGL recieved unknown input key value: #{inspect(key)}"
   end
 
   # --------------------------------------------------------
   # defined to follow the Mac modifier keys
-  # http://www.Rpi.org/docs/latest/group__mods.html
 
   #  @key_mod_shift    0x0001
   #  @key_mod_control  0x0002
@@ -445,7 +441,7 @@ defmodule ScenicDriverEGL.Input do
   #    end)
   #  end
   #  defp mods_to_atoms( mods ) do
-  #    raise "Driver.Rpi recieved unknown mods: #{inspect(mods)}"
+  #    raise "ScenicDriverEGL recieved unknown mods: #{inspect(mods)}"
   #  end
 
   # --------------------------------------------------------

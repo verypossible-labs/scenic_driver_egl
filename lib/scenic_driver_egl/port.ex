@@ -52,6 +52,7 @@ defmodule ScenicDriverEGL.Port do
   @doc false
 
   require Logger
+
   def send(msg, port) do
     try do
       Port.command(port, msg)
