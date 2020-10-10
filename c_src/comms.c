@@ -107,7 +107,7 @@ The caller will typically be erlang, so use the 2-byte length indicator
 // are starving the input polling. Setting it too low means using
 // energy for no purpose. Probably best if set similar to the
 // frame rate of the application
-#define STDIO_TIMEOUT               MILLISECONDS_8
+#define STDIO_TIMEOUT               MILLISECONDS_16
 
 // https://stackoverflow.com/questions/2182002/convert-big-endian-to-little-endian-in-c-without-using-provided-func
 #define SWAP_UINT16(x) (((x) >> 8) | ((x) << 8))

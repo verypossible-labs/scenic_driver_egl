@@ -422,7 +422,7 @@ static int init_egl(egl_data_t* p_data)
 		fprintf(stderr, "failed to choose config: %d\n", n);
 		return -1;
 	}
-fprintf(stderr, "Here 2\n");
+
 	p_data->context = eglCreateContext(p_data->display, p_data->config,
 			EGL_NO_CONTEXT, context_attribs);
 	if (p_data->context == NULL) {
@@ -656,9 +656,9 @@ int main(int argc, char** argv)
 	glClear(GL_COLOR_BUFFER_BIT);
 	eglSwapBuffers(egl_data.display, egl_data.surface);
   struct gbm_bo *bo = gbm_surface_lock_front_buffer(gbm.surface);
-  fprintf(stderr, "Got buffer");
+
 	gbm.bo[egl_data.frame_idx] = bo;
-  fprintf(stderr, "Set buffer");
+
 	drm.fb[egl_data.frame_idx] = drm_fb_get_from_bo(bo);
   ret = drmModeSetCrtc(drm.fd, drm.crtc_id[DISP_ID], drm.fb[egl_data.frame_idx]->fb_id,
 				0, 0, &drm.connector_id[DISP_ID], 1, drm.mode[DISP_ID]);
@@ -705,44 +705,41 @@ int main(int argc, char** argv)
       eglSwapBuffers(egl_data.display, egl_data.surface);
 
       gbm.bo[next_idx] = gbm_surface_lock_front_buffer(gbm.surface);
-		  // drm.fb[next_idx] = drm_fb_get_from_bo(gbm.bo[next_idx]);
-      // ret = drmModeSetCrtc(drm.fd, drm.crtc_id[DISP_ID], drm.fb[next_idx]->fb_id,
-			// 	0, 0, &drm.connector_id[DISP_ID], 1, drm.mode[DISP_ID]);
-      // if (ret) {
-      //   printf("display %d failed to set mode: %s\n", DISP_ID, strerror(errno));
-      //   return ret;
-      // }
-      // fprintf(stderr, "Frame: %d", egl_data.frame_idx);
+		  drm.fb[next_idx] = drm_fb_get_from_bo(gbm.bo[next_idx]);
+      ret = drmModeSetCrtc(drm.fd, drm.crtc_id[DISP_ID], drm.fb[next_idx]->fb_id,
+				0, 0, &drm.connector_id[DISP_ID], 1, drm.mode[DISP_ID]);
+      if (ret) {
+        printf("display %d failed to set mode: %s\n", DISP_ID, strerror(errno));
+        return ret;
+      }
 
-      // fprintf(stderr, "prepare to flip");
-      // ret = drmModePageFlip(drm.fd, drm.crtc_id[DISP_ID], drm.fb[next_idx]->fb_id,
-      //     DRM_MODE_PAGE_FLIP_EVENT, &waiting_for_flip);
-      // if (ret) {
-      //   fprintf(stderr, "failed to queue page flip: %s\n", strerror(errno));
-      //   return -1;
-      // }
-      // waiting_for_flip = 1;
+      ret = drmModePageFlip(drm.fd, drm.crtc_id[DISP_ID], drm.fb[next_idx]->fb_id,
+          DRM_MODE_PAGE_FLIP_EVENT, &waiting_for_flip);
+      if (ret) {
+        fprintf(stderr, "failed to queue page flip: %s\n", strerror(errno));
+        return -1;
+      }
+      waiting_for_flip = 1;
 
-      // while (waiting_for_flip) {
-      //   ret = select(drm.fd + 1, &fds, NULL, NULL, NULL);
-      //   if (ret < 0) {
-      //     fprintf(stderr, "select err: %s\n", strerror(errno));
-      //     return ret;
-      //   } else if (ret == 0) {
-      //     fprintf(stderr, "select timeout!\n");
-      //     return -1;
-      //   } else if (FD_ISSET(0, &fds)) {
-      //     continue;
-      //   }
-      //   drmHandleEvent(drm.fd, &evctx);
-      // }
+      while (waiting_for_flip) {
+        ret = select(drm.fd + 1, &fds, NULL, NULL, NULL);
+        if (ret < 0) {
+          fprintf(stderr, "select err: %s\n", strerror(errno));
+          return ret;
+        } else if (ret == 0) {
+          fprintf(stderr, "select timeout!\n");
+          return -1;
+        } else if (FD_ISSET(0, &fds)) {
+          continue;
+        }
+        drmHandleEvent(drm.fd, &evctx);
+      }
 
       if (gbm.bo[egl_data.frame_idx]) {
         // fprintf(stderr, "Trying to release");
         gbm_surface_release_buffer(gbm.surface, gbm.bo[egl_data.frame_idx]);
       }
       egl_data.frame_idx = next_idx;
-      // fprintf(stderr, "Done rendering");
     }
   }
   return 0;
